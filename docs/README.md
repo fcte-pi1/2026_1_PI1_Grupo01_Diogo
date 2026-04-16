@@ -1,21 +1,5 @@
 # Documentação do Projeto
 
-## Introdução
-
-A competição de **micromouse** é um desafio no qual pequenos robôs autônomos, geralmente do tamanho da palma da mão, são projetados para navegar e resolver labirintos de forma totalmente independente. O principal objetivo desses robôs é encontrar o caminho mais rápido até o centro do labirinto, tomando decisões em tempo real com base nas informações coletadas por seus sensores.
-
-Durante a execução, o micromouse deve identificar paredes, calcular rotas e se localizar no ambiente sem qualquer intervenção humana. Para isso, são aplicados conceitos de programação, eletrônica e algoritmos de navegação, como técnicas de busca de caminhos e mapeamento do espaço.
-
-A competição é realizada em diversos países e possui grande relevância no meio acadêmico, pois estimula o desenvolvimento de soluções inteligentes e eficientes para problemas relacionados à exploração, planejamento e tomada de decisão autônoma, além de integrar diversas áreas como **Eletrônica, Energia, Estrutura e Software**.
-
-
-## Objetivo
-
-Este projeto tem como objetivo o desenvolvimento de um micromouse, um pequeno robô autônomo projetado para resolver labirintos, inspirado em competições internacionais. O desafio consiste em programar o robô para alcançar, da forma mais eficiente possível, as salas centrais de três labirintos distintos, cujas configurações não são previamente conhecidas pelas equipes participantes.
-
-Para cumprir esse objetivo, o micromouse deve operar de maneira totalmente autônoma, sem qualquer intervenção humana durante sua execução. Isso implica monitorar continuamente sua posição dentro do labirinto, identificar e reconhecer paredes próximas, construir um mapa incremental do ambiente à medida que se desloca e determinar com precisão o momento em que o objetivo final foi alcançado.
-
-
 ## Integrantes 
 
 Somos o *Grupo 01* do projeto desenvolvido para a disciplina *Projeto Integrador de Engenharia 1*, ministrada pelo professor *Diogo Caetano Garcia*, no semestre 2026.1.
@@ -37,6 +21,21 @@ Somos o *Grupo 01* do projeto desenvolvido para a disciplina *Projeto Integrador
 | Arthur Guilherme Aquino |  Software |
 | Matheus De Alcantara Da Silva Campos |  Software |
 | Ricardo Henrique Silva Rodrigues |  Software |
+
+## Introdução
+
+A competição de **micromouse** é um desafio no qual pequenos robôs autônomos, geralmente do tamanho da palma da mão, são projetados para navegar e resolver labirintos de forma totalmente independente. O principal objetivo desses robôs é encontrar o caminho mais rápido até o centro do labirinto, tomando decisões em tempo real com base nas informações coletadas por seus sensores.
+
+Durante a execução, o micromouse deve identificar paredes, calcular rotas e se localizar no ambiente sem qualquer intervenção humana. Para isso, são aplicados conceitos de programação, eletrônica e algoritmos de navegação, como técnicas de busca de caminhos e mapeamento do espaço.
+
+A competição é realizada em diversos países e possui grande relevância no meio acadêmico, pois estimula o desenvolvimento de soluções inteligentes e eficientes para problemas relacionados à exploração, planejamento e tomada de decisão autônoma, além de integrar diversas áreas como **Eletrônica, Energia, Estrutura e Software**.
+
+
+## Objetivo
+
+Este projeto tem como objetivo o desenvolvimento de um micromouse, um pequeno robô autônomo projetado para resolver labirintos, inspirado em competições internacionais. O desafio consiste em programar o robô para alcançar, da forma mais eficiente possível, as salas centrais de três labirintos distintos, cujas configurações não são previamente conhecidas pelas equipes participantes.
+
+Para cumprir esse objetivo, o micromouse deve operar de maneira totalmente autônoma, sem qualquer intervenção humana durante sua execução. Isso implica monitorar continuamente sua posição dentro do labirinto, identificar e reconhecer paredes próximas, construir um mapa incremental do ambiente à medida que se desloca e determinar com precisão o momento em que o objetivo final foi alcançado.
 
 ## Histórico de Versão
 
