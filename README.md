@@ -1,4 +1,4 @@
-# Template PI1
+# PI1 - MicroMouse(Grupo 1) - Diogo
 
 Esse é o _template_ de repositório para ser utilizado pelos grupos de PI1 para organizar seu projeto. O _template_ é dividido em pastas, onde cada parte do projeto deve ser armazenada. Os arquivos a serem armazenados incluem documentação, código-fonte, arquivos de CAD, esquemáticos, arquivos de simulação de circuitos, e dados.
 
