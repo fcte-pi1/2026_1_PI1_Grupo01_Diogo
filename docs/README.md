@@ -1,6 +1,31 @@
-# Documentação de projeto
+# Documentação do Projeto
 
-Nessa pasta espera-se a documentação geral do projeto relativa a temas como orçamento, organização da equipe, relatórios. Para escrita do relatório em LaTeX, existem diversos editores compatíveis, porém para facilidade de uso recomenda-se a utilização de do Visual Studio Code com a extensão [LaTeX Workshop](https://marketplace.visualstudio.com/items?itemName=James-Yu.latex-workshop).
+Esta é a página de documentação do projeto MicroMouse, um robô autônomo inteligente capaz de explorar e resolver labirintos desconhecidos. O sistema integra as áreas de *Eletrônica, Energia, Estrutura e Software*, com o objetivo de desenvolver uma plataforma robusta para navegação autônoma e monitoramento em tempo real.
 
-> [!WARNING]
-> Os arquivos .pdf ou arquivos intermediários de compilação do LaTeX não devem ser comitados.
+A documentação contempla diversos aspectos do projeto, incluindo planejamento orçamentário, organização da equipe, relatórios, decisões estruturais, energéticas, eletrônicas e de software, proporcionando uma visão completa do desenvolvimento.
+
+## Integrantes 
+
+| Integrante | Área de Trabalho |
+| -- | -- |
+| **Tiago Lemes Teixeira** |  **Gerente Geral Geral** |
+| **Felipe De Castro Quixabeira** |  **Gerente De Eletrônica** |
+| Arthur Luiz Silva Guedes |  Eletrônica |
+| João Igor Pereira Da Costa |  Eletrônica |
+| Maria Luisa Alves Rodrigues |  Eletrônica |
+| **Fernando De Melo Colli** |  **Gerente De Energia** |
+| Magno Luiz Vale Vieira |  Energia |
+| **Mariana Pereira Schumann** |  **Gerente De Estrutura** |
+| Enzo Macedo Da Motta De Mello |  Estrutura |
+| Raphaela Guimaraes De Araujo Dos Santos |  Estrutura |
+| Rvilmar Jose Fagundes Dos Passos Junior |  Estrutura |
+| **Renan Pereira Reis** |  **Gerente De Software** |
+| Arthur Guilherme Aquino |  Software |
+| Matheus De Alcantara Da Silva Campos |  Software |
+| Ricardo Henrique Silva Rodrigues |  Software |
+
+## Histórico de Versão
+
+| Versão | Data | Descrição | Autor(es) | Revisor(es) | Data da revisão |
+|--------|------|-----------|-----------|-------------|-----------------|
+| `1.0` | 16/04/2026 | Criação do documento. | [Tiago Lemes](https://github.com/TiagoTeixeira-2005) | [Vilmar Fagundes](https://github.com/VilmarFagundes) | 16/04/2026 |
