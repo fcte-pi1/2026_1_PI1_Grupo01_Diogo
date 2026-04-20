@@ -14,3 +14,27 @@ Lembrem sempre de evitar enviar arquivos muito grandes (>5MB). No caso de vídeo
 1. Crie o repositório do projeto utilizando a nomenclatura padrão no formato: `<ano>.<semestre>_PI1_Grupo<n>_<professor>`. Como um exemplo, um nome formado corretamente seria `2026.1_PI1_Grupo1_Diogo`. 
 
 2. Crie uma equipe do projeto com a mesma nomenclatura do repositório porém com o sufixo `_Equipe`, como `2026.1_PI1_Grupo1_Diogo_Equipe`, e solicite, caso necessário, que a equipe tenha permissão de escrita no repositório do projeto.
+
+## Tecnologia para documentação
+
+A geração do site de documentação é realizada utilizando o [Docsify](https://docsify.js.org/), uma ferramenta que permite criar sites dinâmicos a partir de arquivos Markdown.
+
+```shell
+"Docsify generates your documentation website on the fly. Unlike GitBook, it does not generate static html files. Instead, it smartly loads and parses your Markdown files and displays them as a website. To start using it, all you need to do is create an index.html and deploy it on GitHub Pages."
+```
+
+### Instalando o docsify
+
+Para instalar o Docsify globalmente, execute o seguinte comando:
+
+```shell
+npm i docsify-cli -g
+```
+
+### Executando localmente
+
+Para iniciar o servidor local e visualizar a documentação, utilize o comando:
+
+```shell
+docsify serve ./docs
+```
