@@ -38,3 +38,29 @@ Para iniciar o servidor local e visualizar a documentação, utilize o comando:
 ```shell
 docsify serve ./docs
 ```
+
+## Boas práticas de contribuição
+
+### Padrão de nomenclatura para branches
+
+A seguir, apresenta-se o padrão de nomenclatura adotado para a criação de branches:
+
+**1. Sigla referente ao tópico do projeto:**
+- `ES` – Estrutura  
+- `EL` – Eletrônica  
+- `EN` – Energia  
+- `SW` – Software  
+
+**2. Numeração da issue à qual a branch está vinculada**
+
+Dessa forma, supondo que a equipe de Software vá criar uma branch referente à *Issue 42*, a nomenclatura adequada seria:
+
+```bash
+SW_42
+```
+
+### Boas práticas para o Pull Request
+
+É importante que o Pull Request contenha:
+- Uma descrição clara da issue relacionada (incluindo referência direta, como #42);
+- O objetivo do Pull Request, indicando precisamente o problema que ele resolve ou a funcionalidade que implementa.
