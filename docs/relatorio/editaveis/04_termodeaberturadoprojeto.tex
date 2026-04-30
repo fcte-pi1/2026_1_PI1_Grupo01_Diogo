@@ -42,7 +42,68 @@ possível de ser medido por meio de um ou mais indicadores;
 
 \section{Requisitos}
 
-\textcolor{red}{Listar os fatos que são essenciais para o consumidor adquirir o produto, exemplo: cor, tamanho, material, tempo de vida-útil, dispositivo de segurança \textbf{x}, entre outros.}
+Os requisitos do \textbf{Micromouse Autônomo} definem as funcionalidades e restrições essenciais que o sistema deve cumprir para garantir seu propósito educacional e tecnológico. Eles asseguram que o robô navegue, mapeie e interprete o labirinto de forma totalmente autônoma, registrando também os dados de telemetria. Esses requisitos estão organizados em \textbf{Requisitos Funcionais (RF)} e \textbf{Requisitos Não Funcionais (RNF)}, que abrangem, respectivamente, os comportamentos do sistema e as limitações técnicas necessárias para assegurar desempenho, confiabilidade e padronização do projeto.
+
+\begin{table}[htbp]
+\begin{center}
+\scriptsize
+\setlength{\tabcolsep}{4pt}
+\renewcommand{\arraystretch}{1}
+\caption{Requisitos Funcionais do Sistema.}
+\begin{tabular}{|c|p{13cm}|}
+\hline
+\textbf{ID} & \textbf{Descrição} \\
+\hline
+
+\textbf{RF01} & O sistema deve permitir que o micromouse navegue de forma autônoma em labirintos sem intervenção humana após a ativação inicial. \\ \hline
+\textbf{RF02} & O sistema deve ser capaz de detectar paredes durante a navegação. \\ \hline
+\textbf{RF03} & O sistema deve monitorar continuamente a posição do micromouse. \\ \hline
+\textbf{RF04} & O sistema deve mapear progressivamente o ambiente do labirinto. \\ \hline
+\textbf{RF05} & O sistema deve identificar quando o micromouse alcança a área central do labirinto. \\ \hline
+\textbf{RF06} & O sistema deve interpretar o ambiente com base na disposição das paredes. \\ \hline
+\textbf{RF07} & O sistema deve tomar decisões de navegação com base nas rotas disponíveis. \\ \hline
+\textbf{RF08} & O sistema deve adaptar a navegação a diferentes dimensões de labirinto (4x4, 8x8 e 16x16). \\ \hline
+\textbf{RF09} & O sistema deve registrar a trajetória percorrida pelo micromouse. \\ \hline
+\textbf{RF10} & O sistema deve calcular o consumo de bateria. \\ \hline
+\textbf{RF11} & O sistema deve exibir o consumo de bateria. \\ \hline
+\textbf{RF12} & O sistema deve calcular a velocidade média do micromouse. \\ \hline
+\textbf{RF13} & O sistema deve exibir a velocidade média do micromouse. \\ \hline
+\textbf{RF14} & O sistema deve calcular o tempo total de execução. \\ \hline
+\textbf{RF15} & O sistema deve exibir o tempo total de execução. \\ \hline
+\textbf{RF16} & O sistema deve exibir em tempo real os dados de telemetria por meio de uma interface web. \\ \hline
+\textbf{RF17} & O sistema deve exibir o tipo de labirinto. \\ \hline
+\textbf{RF18} & O sistema deve exibir o trajeto percorrido. \\ \hline
+\textbf{RF19} & O sistema deve indicar o status do desafio (cumprido ou não). \\ \hline
+\textbf{RF20} & O sistema deve armazenar os dados das execuções em um banco de dados após a conclusão. \\ \hline
+\textbf{RF21} & O sistema deve permitir a consulta dos dados armazenados por labirinto. \\ \hline
+\textbf{RF22} & O sistema deve permitir a comparação de desempenho entre diferentes execuções. \\ \hline
+\textbf{RF23} & O sistema deve ser capaz de achar o caminho mais rapido após mapeamento do labirinto \\ \hline
+\textbf{RF24} & O sistema deve  exibir o labirinto percorrido após a execução\\ \hline
+\end{tabular}
+\end{center}
+\label{RF}
+\end{table}
+
+\begin{table}[htbp]
+\begin{center}
+\scriptsize
+\setlength{\tabcolsep}{4pt}
+\renewcommand{\arraystretch}{1}
+\caption{Requisitos Não Funcionais do Sistema.}
+\begin{tabular}{|c|p{10cm}|c|}
+\hline
+\textbf{ID} & \textbf{Descrição} & \textbf{Categoria URPS+} \\
+\hline
+
+\textbf{RNF01} & O sistema deve se comunicar com o sistema por wi-fi. & Suportabilidade \\ \hline
+\textbf{RNF02} & O micromouse deve parar completamente no tempo de 2s, após receber comando de parada emergência. & Confiabilidade \\ \hline
+\textbf{RNF03} & O sistema deve ser capaz de armazenar dados  no banco de dados relacional de forma autonoma. & Confiabilidade \\ \hline
+\textbf{RNF04} & O micromouse deve ser capaz de fazer uma decisão ao chegar uma celula no tempo de 5s & Restrição. \\ \hline
+\textbf{RNF05} & O sistema de interface web deve exibir dados atualizados do micromouse de telemetria sem exceder 500 ms. & Desempenho \\ \hline
+\end{tabular}
+\end{center}
+\label{RNF}
+\end{table}
 
 \section{Justificativa}
 
