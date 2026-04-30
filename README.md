@@ -1,66 +1,55 @@
-# PI1 - MicroMouse(Grupo 1) - Diogo
+# MicroMouse - Grupo 01
 
-Esse é o _template_ de repositório para ser utilizado pelos grupos de PI1 para organizar seu projeto. O _template_ é dividido em pastas, onde cada parte do projeto deve ser armazenada. Os arquivos a serem armazenados incluem documentação, código-fonte, arquivos de CAD, esquemáticos, arquivos de simulação de circuitos, e dados.
+Repositório do projeto de um robô autônomo MicroMouse para a disciplina de Projeto Integrador 1 (PI1) da FCTE-UnB.
 
-A organização e a correta utilização do repositório do projeto serão considerados na avaliação do grupo. Dessa forma, recomenda-se que *todos os membros* do grupo leiam as instruções deste repositório, aprendam a a utilizar o git (caso ainda não saibam) e também que o grupo combine uma estratégia de como irão utilizar o repositório em conjunto. Dessa forma não deixem de utilizar todas as ferramentas que o GitHub oferece, incluindo branchs, PRs, revisões, issues, calendários, dentre outros.
+## Equipe
+* **[Nome]** - Estrutura
+* **[Nome]** - Eletrônica
+* **[Nome]** - Energia
+* **[Nome]** - Software
 
-Lembrem sempre de evitar enviar arquivos muito grandes (>5MB). No caso de vídeos e outros arquivos pesados que são necessários, armazenar o arquivo em outra plataforma e colocar aqui apenas o _link_.
+## Estrutura de Pastas
+* **`docs/relatorio/`**: Relatório técnico oficial (LaTeX).
+* **`hw/`**: Hardware (esquemáticos e projetos de PCB).
+* **`mec/`**: Mecânica (modelagem 3D e CAD).
+* **`src/`**: Software (código-fonte e firmware).
 
-> [!IMPORTANT]
-> A estrutura de pastas do projeto não reflete a divisão de equipes. Os membros podem e devem trabalhar nas diferentes pastas a depender da necessidade do projeto.
+---
 
-## Utilização
+## Padrões do Repositório
 
-1. Crie o repositório do projeto utilizando a nomenclatura padrão no formato: `<ano>.<semestre>_PI1_Grupo<n>_<professor>`. Como um exemplo, um nome formado corretamente seria `2026.1_PI1_Grupo1_Diogo`. 
+### 1. Nomenclatura de Branches
+Padrão: `[ÁREA]_[NÚMERO_DA_ISSUE]-[descrição-curta]`
+* **ES** - Estrutura
+* **EL** - Eletrônica
+* **EN** - Energia
+* **SW** - Software
+* *Exemplo:* `SW_12-algoritmo-mapeamento`
 
-2. Crie uma equipe do projeto com a mesma nomenclatura do repositório porém com o sufixo `_Equipe`, como `2026.1_PI1_Grupo1_Diogo_Equipe`, e solicite, caso necessário, que a equipe tenha permissão de escrita no repositório do projeto.
+### 2. Mensagens de Commit
+Inicie os commits com os seguintes prefixos:
+* **[ADD]**: Criação de arquivos ou funcionalidades.
+* **[FIX]**: Correção de bugs.
+* **[DOCS]**: Atualização do relatório ou README.
+* **[REF]**: Refatoração e organização de código.
+* *Exemplo:* `[ADD] leitura dos sensores infravermelhos`
 
-## Tecnologia para documentação
+## Guia de Contribuição
 
-A geração do site de documentação é realizada utilizando o [Docsify](https://docsify.js.org/), uma ferramenta que permite criar sites dinâmicos a partir de arquivos Markdown.
+### Tutorial: Fluxo Git (Terminal)
+Siga este passo a passo para cada nova edição:
+1. `git pull origin main` (Atualiza seu local)
+2. `git checkout -b [NOME_DA_SUA_BRANCH]` (Cria sua ramificação)
+3. Faça suas alterações.
+4. `git add .`
+5. `git commit -m "[PREFIXO] descrição curta"`
+6. `git push origin [NOME_DA_SUA_BRANCH]`
+7. Abra o **Pull Request** no site do GitHub.
 
-```shell
-"Docsify generates your documentation website on the fly. Unlike GitBook, it does not generate static html files. Instead, it smartly loads and parses your Markdown files and displays them as a website. To start using it, all you need to do is create an index.html and deploy it on GitHub Pages."
-```
-
-### Instalando o docsify
-
-Para instalar o Docsify globalmente, execute o seguinte comando:
-
-```shell
-npm i docsify-cli -g
-```
-
-### Executando localmente
-
-Para iniciar o servidor local e visualizar a documentação, utilize o comando:
-
-```shell
-docsify serve ./docs
-```
-
-## Boas práticas de contribuição
-
-### Padrão de nomenclatura para branches
-
-A seguir, apresenta-se o padrão de nomenclatura adotado para a criação de branches:
-
-**1. Sigla referente ao tópico do projeto:**
-- `ES` – Estrutura  
-- `EL` – Eletrônica  
-- `EN` – Energia  
-- `SW` – Software  
-
-**2. Numeração da issue à qual a branch está vinculada**
-
-Dessa forma, supondo que a equipe de Software vá criar uma branch referente à *Issue 42*, a nomenclatura adequada seria:
-
-```bash
-SW_42
-```
-
-### Boas práticas para o Pull Request
-
-É importante que o Pull Request contenha:
-- Uma descrição clara da issue relacionada (incluindo referência direta, como #42);
-- O objetivo do Pull Request, indicando precisamente o problema que ele resolve ou a funcionalidade que implementa.
+### Tutorial: Relatório (Sincronização Overleaf)
+Como o uso do Overleaf é manual, siga esta ordem:
+1. No Overleaf, edite apenas os arquivos na pasta `editaveis/`.
+2. Baixe os arquivos `.tex` alterados para sua máquina.
+3. Substitua-os na pasta `docs/relatorio/editaveis/` do seu repositório local.
+4. Siga o **Fluxo Git** acima para subir as mudanças.
+*Observação: Não altere o `main.tex` nem envie arquivos `.pdf` no commit.*
