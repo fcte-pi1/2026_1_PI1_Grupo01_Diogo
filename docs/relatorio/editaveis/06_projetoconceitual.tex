@@ -10,6 +10,49 @@
 
 \textcolor{red}{Apresentar desenho em CAD, indicar dimensões por lado/aresta/cota, indicar materiais utilizados e explicar o desenho e as decisões de projeto.}
 
+\subsection{Introdução}
+Esta seção reúne as análises e decisões referentes ao planejamento estrutural e mecânico do Micromouse. Inclui o desenho do chassi, a definição dos materiais, a organização interna do esqueleto e a escolha do sistema de locomoção --- seja bimotor ou com soluções de tração mais complexas. Abrange também a especificação dos motores que garantirão mobilidade adequada e a análise de componentes adicionais, como ventoinhas voltadas à estabilidade.
+
+Além disso, contempla a metodologia utilizada para o desenvolvimento do labirinto de testes, seguindo rigorosamente o padrão oficial de dimensões e acabamento, permitindo a validação realista do desempenho do robô.
+
+\subsection{Definições}
+
+\subsubsection{Planejamento do Chassi e Sistema de Locomoção}
+% Espaço reservado para o desenvolvimento do texto do chassi
+
+\subsubsection{Labirinto de Testes}
+A construção do labirinto de testes foi baseada na estrutura feita pela UKMARS (Sociedade Britânica de Micromouse e Robótica) \cite{ukmars_maze}. Para o piso, será utilizado o material \textbf{MDF (\textit{Medium-Density Fiberboard})}, enquanto as paredes e pinos de sustentação serão confeccionados em \textbf{impressora 3D}.
+
+\subsubsubsection{Justificativa da Escolha do MDF para o piso}
+As principais vantagens de utilizar o \textbf{MDF} são: 
+
+\begin{enumerate}
+    \item \textbf{Superfície Lisa e Sem Veios:} Ao contrário da madeira compensada ou maciça, o MDF não possui ``veios'', nós ou irregularidades naturais. Isso é fundamental para a Odometria Precisa e a Leitura de Sensores do Micromouse.
+    
+    \item \textbf{Excelente Acabamento para Pintura:} O piso do labirinto de Micromouse precisa ser pintado de preto para criar alto contraste. O MDF absorve muito bem as tintas, permitindo um acabamento liso e sem reflexos, o que é crucial para que a luz ambiente ou os emissores do robô não causem leituras erradas nos sensores de parede.
+    
+    \item \textbf{Alta Precisão de Corte e Usinagem:} Devido as células do labirinto terem um padrão de medidas muito rígidas ($18\,\text{cm} \times 18\,\text{cm}$). O MDF é extremamente fácil de cortar com serras circulares ou máquinas de corte a laser/CNC sem lascar as bordas. 
+    
+    \item \textbf{Estabilidade Dimensional (em ambientes internos):} Desde que mantido longe de umidade, o MDF é muito mais estável que a madeira comum. Ele não empena ou torce facilmente com variações normais de temperatura, garantindo que o seu piso fique perfeitamente nivelado. Um piso desnivelado pode fazer o robô raspar o chassi ou perder a calibração do giroscópio.
+    
+    \item \textbf{Custo-Benefício:} Construir o piso com materiais como acrílico fosco, polímeros de engenharia ou metais seria financeiramente inviável para o projeto. O MDF oferece um equilíbrio perfeito entre qualidade profissional e preço acessível.
+\end{enumerate}
+
+\subsubsubsection{Justificativa da Escolha da impressora 3D}
+As principais vantagens de utilizar a \textbf{Impressora 3D} são:
+
+\begin{enumerate}
+    \item \textbf{Cores Nativas:} Com a impressora 3D, pode-se simplesmente usar filamento branco para a parede e usar filamento vermelho para o topo. Isso economiza horas de isolamento com fita crepe, aplicação de primer e secagem de tinta, além de evitar o risco da tinta descascar com as batidas do robô.
+    
+    \item \textbf{Design de Encaixe Perfeito (Tolerâncias Customizadas):} É possível modelar os pinos com tolerâncias exatas para o diâmetro dos furos que serão feitos no MDF e para a espessura das paredes.
+    
+    \item \textbf{Reprodutibilidade e Precisão Dimensional:} O labirinto exige dezenas de paredes e pinos idênticos. A impressora 3D garante que a parede número 1 terá exatamente as mesmas dimensões da parede número 80. Diferente de cortar madeira ou acrílico manualmente, onde erros milimétricos se acumulam e estragam o \textit{grid} da pista, a impressora entrega consistência.
+    
+    \item \textbf{Baixo Peso com Boa Resistência:} Filamentos comuns como PLA ou PETG são mais do que resistentes o suficiente para aguentar os impactos de um Micromouse.
+    
+    \item \textbf{Facilidade:} Tendo em vista que um dos integrantes possui a impressora 3D, torna mais fácil fazer as alterações necessárias e ajustes das paredes e pinos do labirinto.
+\end{enumerate}
+
 \section{Descrição de \textit{hardware}}
 
 \textcolor{red}{A descrição de \textit{hardware} no documento deve permitir que outras pessoas repliquem o produto proposto neste documento. Para isso, deve-se explicar de forma textual os principais sub-sistemas e as escolhas de projeto, além de indicar:}
