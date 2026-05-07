@@ -2,9 +2,41 @@
 
 \section{Características gerais}
 
-\textcolor{red}{Descrever produto de forma geral. Apresentar itens teóricos sobre o projeto a serem aprofundados ou detalhados oportunamente.}
+O produto proposto é um robô autônomo de pequeno porte, denominado Micromouse, cujo objetivo
+principal é explorar e resolver labirintos desconhecidos de forma completamente autônoma, sem
+qualquer intervenção humana durante o percurso. O robô deverá ser capaz de mapear o ambiente,
+monitorar sua própria localização, detectar paredes com $5{,}0\,\text{cm}$ de altura e
+$1{,}2\,\text{cm}$ de espessura, e identificar quando alcançou a região central do labirinto,
+que corresponde a uma sala retangular de aproximadamente $2 \times 2$ células.
 
-\textcolor{red}{Apresentar e explicar a Estrutura Analítica do Projeto (EAP), tomando cuidado com a legibilidade da imagem. Se necessário, coloque a EAP dentro do comando ``\textsf{\textbackslash begin\{landscape\} \textbackslash end\{landscape\}}'' para que ela seja apresentada em uma página deitada.}
+O Micromouse será construído dentro das dimensões máximas de
+$25{,}0\,\text{cm} \times 25{,}0\,\text{cm}$, sobre um \textit{chassis} com tração diferencial
+de duas rodas motorizadas e uma roda de apoio livre. A navegação será realizada por meio de
+três sensores de distância por tempo de voo (\textit{Time of Flight}) VL53L0X, posicionados
+nas direções frontal e laterais, complementados por uma unidade de medição inercial MPU6050
+responsável pela correção de trajetória nas curvas. O controle dos motores N20 será feito por
+uma ponte H TB6612FNG, além disso, eles já apresentam encoder acoplados a cada motor.
+
+O sistema embarcado será gerenciado por um microcontrolador ESP32 DevKitV1, responsável pela
+execução do algoritmo de navegação, pelo mapeamento do labirinto em memória e pela comunicação
+sem fio via Wi-Fi com a interface de telemetria. O produto contará com monitoramento em tempo
+real de tensão e corrente por meio do módulo INA219, exibindo na tela de acompanhamento o tipo
+do labirinto, o trajeto percorrido, a velocidade média, o consumo de bateria e o tempo de
+conclusão. A alimentação será fornecida por duas células de lítio Lishen LR2170SA em
+configuração $2S$, gerenciadas por um BMS 2S 20A com indicador de carga, e reguladas por um
+conversor Buck DC-DC para $5{,}0\,\text{V}$.
+
+Para garantir a viabilidade e a qualidade das entregas, foi elaborada uma Estrutura Analítica
+do Projeto (EAP), que pode ser visualizada na Figura~\ref{fig:eap}.
+
+\begin{landscape}
+    \begin{figure}[htbp]
+        \centering
+        \includesvg[width=1\linewidth]{figuras/EAP}
+        \caption{Estrutura Analítica do Projeto}
+        \label{fig:eap}
+    \end{figure}
+\end{landscape}
 
 \section{Estrutura}
 
@@ -15,10 +47,26 @@ Esta seção reúne as análises e decisões referentes ao planejamento estrutur
 
 Além disso, contempla a metodologia utilizada para o desenvolvimento do labirinto de testes, seguindo rigorosamente o padrão oficial de dimensões e acabamento, permitindo a validação realista do desempenho do robô.
 
-\subsection{Definições}
+\subsection{Decisões do projeto}
 
-\subsubsection{Planejamento do Chassi e Sistema de Locomoção}
-% Espaço reservado para o desenvolvimento do texto do chassi
+\subsubsection{Planejamento do Chassi}
+O chassi do micromouse será desenvolvido baseado ao Projeto Jabuti \cite{Projeto_Jabuti} com o uso da impressora 3D, usando como material, o \textbf{filamento PLA} para sua construção. 
+
+\subsubsubsection{Justificativa para a escolha da \textbf{impressora 3D}}
+As principais vantagens de usar a impressora 3D para a construção do chassi do micromouse são:
+
+\begin{enumerate}
+    \item \textbf{Liberdade Absoluta para Posicionamento de Sensores:} Trazendo a possibilidade de desenhar suportes inclinados e embutidos para os sensores de distância.
+    
+    \item \textbf{Prototipagem Rápida e Design Iterativo:} A impressão 3D permite ajustar o CAD e fabricar uma nova base em poucas horas, acelerando o ciclo de desenvolvimento.
+    
+    \item \textbf{Otimização de Peso e Customização Estrutural:} A impressão 3D permite controlar a densidade interna da peça. Ajustando o preenchimento. Logo, o chassi torna-se extremamente leve, permitindo reforços estruturais apenas nos pontos de maior estresse físico.
+
+    \item \textbf{Facilidade:} Tendo em vista que um dos integrantes possui a impressora 3D, torna mais fácil fazer as alterações necessárias do chassi do micromouse.
+\end{enumerate}
+
+\subsubsection{Sistema de Locomoção}
+
 
 \subsubsection{Labirinto de Testes}
 A construção do labirinto de testes foi baseada na estrutura feita pela UKMARS (Sociedade Britânica de Micromouse e Robótica) \cite{ukmars_maze}. Para o piso, será utilizado o material \textbf{MDF (\textit{Medium-Density Fiberboard})}, enquanto as paredes e pinos de sustentação serão confeccionados em \textbf{impressora 3D}.
@@ -35,7 +83,7 @@ As principais vantagens de utilizar o \textbf{MDF} são:
     
     \item \textbf{Estabilidade Dimensional (em ambientes internos):} Desde que mantido longe de umidade, o MDF é muito mais estável que a madeira comum. Ele não empena ou torce facilmente com variações normais de temperatura, garantindo que o seu piso fique perfeitamente nivelado. Um piso desnivelado pode fazer o robô raspar o chassi ou perder a calibração do giroscópio.
     
-    \item \textbf{Custo-Benefício:} Construir o piso com materiais como acrílico fosco, polímeros de engenharia ou metais seria financeiramente inviável para o projeto. O MDF oferece um equilíbrio perfeito entre qualidade profissional e preço acessível.
+    \item \textbf{Custo-Benefício:} Construir o piso com materiais como acrílico fosco, polímeros de engenharia ou metais seria financeiramente inviável para o projeto. O MDF oferece um equilíbrio perfeito entre qualidade profissional e preço acessível.    
 \end{enumerate}
 
 \subsubsubsection{Justificativa da Escolha da impressora 3D}
@@ -54,7 +102,34 @@ As principais vantagens de utilizar a \textbf{Impressora 3D} são:
 \end{enumerate}
 
 \section{Descrição de \textit{hardware}}
+O hardware proposto para o sistema foi projetado a partir de uma arquitetura modular para um robô móvel autônomo com foco em processamento eficiente e monitoramento de energia. A arquitetura é centrada no microcontrolador ESP32, escolhido pela necessidade de processar dados de múltiplos sensores que utilizam o protocolo de comunicação $I^2C$ e realizar o controle dos motores em tempo real. Além disso, são utilizados outros componentes eletrônicos para cada módulo do sistema, dentre eles, o sistema de Sensoriamento, Atuação, Processamento e Gerenciamento de Energia.
 
+ É possível visualizar a organização sistêmica entre esses módulos no diagrama de blocos \ref{fig:diag.blocos}. O sistema é alimentado por duas células Lishen 21700 (2S), fornecendo uma tensão nominal de 7,4V (8,4V carregada). Uma BMS 2S 20A garante a segurança contra sobrecarga e descarga excessiva. Para a lógica, utiliza-se um conversor Buck DC-DC Step Down 360 para reduzir a tensão para 5V estáveis.
+
+ O módulo de sensoriamento conta com um MPU6050 (IMU), que fornece dados de acelerômetro e giroscópio para controle de orientação.
+
+\begin{figure}[h!]
+    \centering
+    \includesvg[width=1\linewidth]{figuras/Diagrama de Blocos (Hardware) - PI1}
+    \caption{Diagrama de blocos}
+    \label{fig:diag.blocos}
+\end{figure}
+
+\begin{figure}[h!]
+    \centering
+    \includegraphics[width=1\linewidth]{figuras/Esquemático_principal.png}
+    \caption{Esquemático Principal do Hardware}
+    \label{fig:esque.princi}
+\end{figure}
+
+\begin{figure}[h!]
+    \centering
+    \includegraphics[width=1\linewidth]{figuras/Esquemático_BMS.png}
+    \caption{Esquemático do pack de baterias}
+    \label{fig:esque.bms}
+\end{figure}
+
+\begin{comment}
 \textcolor{red}{A descrição de \textit{hardware} no documento deve permitir que outras pessoas repliquem o produto proposto neste documento. Para isso, deve-se explicar de forma textual os principais sub-sistemas e as escolhas de projeto, além de indicar:}
 
 \begin{itemize}
@@ -74,68 +149,316 @@ As principais vantagens de utilizar a \textbf{Impressora 3D} são:
     \caption{\textcolor{red}{Diagrama de blocos e esquemático de um circuito conversor de corrente alternada para corrente direta. Extraído de \cite{block_n_schematic}.}}
     \label{fig:diagrama_blocos_e_esquematico}
 \end{figure}
+\end{comment}
 
-\section{Análise de consumo energético}
+\section{Análise de Consumo Energético}
 
-\textcolor{red}{Com relação ao consumo energético do produto desenvolvido, será necessário apresentar cálculos de consumo dos diversos componentes utilizados e explicar as decisões de projeto para atender a estas demandas.}
+A análise de consumo energético do micromouse é fundamental para garantir a autonomia necessária durante a execução dos desafios propostos, assegurando estabilidade operacional e prevenindo quedas de tensão que possam comprometer a navegação. Nesta seção, detalham-se os subsistemas elétricos, os cálculos de consumo individual e total, a seleção da fonte de alimentação e os mecanismos de regulação e monitoramento.
 
+\subsection{Identificação dos Subsistemas Elétricos}
+
+Os componentes foram classificados de acordo com sua função no sistema e caracterizados pela tensão de operação, corrente média consumida e tempo aproximado de uso durante um ciclo típico de execução de dez minutos. A configuração final inclui quatro sensores de distância por tempo de voo (ToF) e uma unidade de medição inercial (IMU) para controle de orientação. A Tabela~\ref{tab:subsistemas_consumo} apresenta os valores consolidados.
+
+\begin{table}[htbp]
+\centering
+\caption{Caracterização dos subsistemas elétricos do micromouse.}
+\label{tab:subsistemas_consumo}
+\resizebox{\columnwidth}{!}{%
+\begin{tabular}{|l|l|c|c|c|}
+\hline
+\textbf{Componentes} & \textbf{Subsistema} & \textbf{Tensão (V)} & \textbf{Corrente (mA)} & \textbf{Tempo (s)} \\ \hline
+ESP32 DevKit & Processamento & 3,3 & 150 & 600 \\ \hline
+2x Motores N20 + TB6612FNG & Atuadores & 7,4 -- 8,4 & 500 & 400 \\ \hline
+4x VL53L0X + MPU6050 + Encoders & Sensoriamento & 3,3 & 85 & 600 \\ \hline
+INA219 & Telemetria & 3,3 & 1 & 600 \\ \hline
+\end{tabular}%
+}
+\end{table}
+
+\subsection{Cálculo da Energia Consumida por Componente}
+
+A energia demandada por cada subsistema foi calculada utilizando a fórmula $E = V \cdot I \cdot t$, onde $E$ corresponde à energia consumida em joules (J), $V$ é a tensão nominal, $I$ a corrente média em ampères e $t$ o tempo de operação em segundos:
 
 \begin{itemize}
-    \item \textcolor{red}{ \textbf{Identificação dos Subsistemas Elétricos:} liste todos os componentes que consumirão energia, como sensores, microcontroladores, atuadores e módulos de armazenamento de dados. Para cada componente, registre a tensão de operação (V), corrente média (mA) e tempo estimado de uso (s).}
-    \item \textcolor{red}{ \textbf{Cálculo da Energia Consumida por Componente:} utilize a fórmula: $E = V I t$, onde $E$ é a energia em joules, $V$ é a tensão em volts, $I$ a corrente em ampères e $t$ o tempo em segundos. Realize esse cálculo para cada componente do sistema.}
-    \item \textcolor{red}{ \textbf{Estimativa do Consumo Total de Energia:} some as energias de todos os componentes para obter o consumo energético total estimado do sistema por lançamento.}
-    \item \textcolor{red}{ \textbf{Escolha da Fonte de Alimentação:} com base no consumo total, converta para watt-hora: 1 Wh = 3600 J. Adicione e justifique uma margem de segurança (pesquisar o que é usual para este tipo de sistema) e selecione uma bateria ou fonte que supra a demanda.}
-    \item \textcolor{red}{ \textbf{Planejamento do Circuito de Alimentação:} analise a necessidade de inclusão de reguladores de tensão, proteções contra sobrecorrente, e isolamento para atuadores. Como as oscilações de tensão serão controladas?}
-    \item \textcolor{red}{ \textbf{Monitoramento via \textit{software}:} implemente, no \textit{software} embarcado, rotinas para medir a tensão da bateria e registrar dados de tempo de operação. Colete os dados para análise.}
-    \item \textcolor{red}{ \textbf{Validação com Testes Reais:} realize testes de campo para comparar o consumo estimado com o real. Ajuste a capacidade da fonte se necessário e refine o software de coleta de dados. Justifique a diferença de resultados (real x teórica), de acordo com a literatura.}
+    \item \textbf{Processamento (ESP32):} $3,3 \times 0,150 \times 600 = 297\,\mathrm{J}$
+    \item \textbf{Atuadores (Motores e Driver):} $7,4 \times 0,500 \times 400 = 1480\,\mathrm{J}$
+    \item \textbf{Sensores e Telemetria:} $3,3 \times 0,086 \times 600 \approx 170,3\,\mathrm{J}$
 \end{itemize}
+
+\subsection{Estimativa do Consumo Total de Energia}
+
+Somando as demandas individuais, o consumo total estimado para um ciclo de operação é:
+
+\[
+E_{\mathrm{total}} = 1947,3\,\mathrm{J}
+\]
+
+Este valor reflete a demanda energética considerando a carga total do hardware embarcado em regime contínuo.
+
+\subsection{Escolha da Fonte de Alimentação}
+
+Para a seleção da bateria, converte-se o consumo total de Joules para Watt-hora (Wh), conforme a relação $1\,\mathrm{Wh} = 3600\,\mathrm{J}$:
+
+\[
+E_{\mathrm{Wh}} = \frac{1947,3}{3600} \approx 0,541\,\mathrm{Wh}
+\]
+
+A fonte selecionada consiste em um pack de baterias de Lítio-Íon Lishen LR2170SA (21700) em configuração 2S1P, totalizando 4000 mAh e energia nominal de aproximadamente $29,2\,\mathrm{Wh}$.
+
+\textbf{Margem de Segurança:} Adotou-se uma margem de segurança de 30\%, padrão para compensar picos de corrente em acelerações bruscas e evitar a descarga profunda. Mesmo com este critério, a bateria selecionada excede a demanda de um ciclo operacional em mais de 50 vezes, garantindo estabilidade e múltiplas execuções sem recarga.
+
+\subsection{Monitoramento via Software}
+
+O monitoramento energético é realizado através do sensor INA219 via barramento $I^2C$. O software embarcado executa as seguintes rotinas:
+\begin{itemize}
+    \item \textbf{Telemetria:} Registro da tensão e tempo de operação, com envio de pacotes JSON a cada 50 ms via UART/Wi-Fi.
+    \item \textbf{Segurança:} Rotina de interrupção que monitora se a tensão por célula atinge $3,2\,\mathrm{V}$, permitindo uma parada segura antes do corte automático da BMS.
+\end{itemize}
+
+\subsection{Plano de Validação e Testes Reais}
+
+\begin{itemize}
+    \item \textbf{Nota de Revisão:} Esta secção descreve a metodologia de validação a ser executada durante o PC2. Os dados teóricos aqui apresentados deverão ser substituídos pelos valores experimentais após a realização dos testes de campo.
+\end{itemize}
+
+A validação do sistema energético consistirá na comparação entre o consumo teórico calculado ($1947,3\,\mathrm{J}$) e os dados reais recolhidos via telemetria durante ciclos de operação no labirinto. O procedimento de teste seguirá as etapas:
+
+\begin{itemize}
+    \item \textbf{Monitorização em Tempo Real:} Utilização do sensor INA219 para registar a queda de tensão e o consumo de corrente em diferentes perfis de movimento (aceleração, curvas e velocidade constante).
+    \item \textbf{Análise de Descarga:} Confronto dos dados obtidos com a curva de descarga nominal das células Lishen LR2170SA para verificar a precisão da estimativa de autonomia.
+    \item \textbf{Justificativa de Desvios:} Eventuais divergências entre os resultados teóricos e práticos serão analisadas considerando perdas térmicas por efeito Joule no cabeamento e a eficiência real dos reguladores Buck DC-DC sob carga.
+\end{itemize}
+
+Os resultados finais desta validação permitirão o refinamento dos algoritmos de segurança e a calibração final dos alertas de subtensão no software embarcado.
+
+\subsection{Planejamento do Circuito de Alimentação}
+
+A arquitetura de alimentação foi projetada para garantir eficiência e proteção das células:
+\begin{itemize}
+    \item \textbf{Regulação:} A bateria alimenta diretamente os atuadores, enquanto um conversor buck DC-DC fornece 5 V estáveis ao microcontrolador pelo pino Vin.
+    \item \textbf{Proteção:} Uma BMS 2S 20A (modelo HW-391) monitora limites de tensão e corrente, contando com função de balanceamento para equalização das células durante a carga. O corte de descarga (overdischarge) é configurado tipicamente em 2,5 V (faixa de 2,4 V a 2,6 V).
+    \item \textbf{Isolamento de Ruído:} O uso do conversor buck isola a lógica de controle das flutuações geradas pelos motores.
+    \item \textbf{Diretriz de Montagem:} É obrigatório o uso de solda-ponto para evitar danos térmicos às vedações das baterias.
+\end{itemize}
+
 
 \section{Descrição de \textit{software}}
 
-\textcolor{red}{Itens fundamentais:}
+\subsection{Diagrama de Atividades UML}
 
+\subsection{Backlog do Produto}
+\begin{table}[htbp]
+\begin{center}
+\scriptsize
+\setlength{\tabcolsep}{4pt}
+\renewcommand{\arraystretch}{1.5} % Ajustado para 1.5 para melhor leitura das células com muito texto
+\caption{Backlog de Histórias de Usuário para o Sistema Micromouse.}
+\begin{tabular}{|c|p{5cm}|p{4cm}|p{2cm}|p{2cm}|}
+\hline
+\textbf{ID} & \textbf{História de Usuário} & \textbf{Critério de Aceitação} & \textbf{Requisitos} & \textbf{Propriedades} \\
+\hline
+
+\textbf{US01} & Como operador, quero visualizar os dados de consumo de bateria e velocidade média para monitorar o desempenho. & O sistema deve atualizar os dados na interface web em tempo real. & RF11, RF13 & Prioridade: Must Have \\ \hline
+
+\textbf{US02} & Como operador, quero consultar os dados de tipo de labirinto, tempo total de execução, trajeto percorrido, status do desafio e posição do micromouse em tempo real para avaliar resultados. & Todos os dados devem ser  visíveis pós-execução. & RF03, RF15, RF17, RF18, RF19 & Prioridade: Must Have \\ \hline
+
+\textbf{US03} & Como operador, quero que os dados das execuções sejam armazenados e permitam consulta posterior para análise histórica. & Os dados devem persistir no banco de dados e ser recuperáveis. & RF20, RF21 & Prioridade: Must Have \\ \hline
+
+\textbf{US04} & Como operador, quero que o micromouse percorra o labirinto de forma autônoma, detectando as paredes durante a navegação e identificando a área central do mesmo.& O micromouse deve chegar a área central sem interferêcia humana, se guiando pelas paredes. & RF01, RF02, RF05 & Prioridade: Must Have 
+\\ \hline
+
+\textbf{US05} & Como operador quero que o micromouse consiga resolver labirintos de diferentes dimensões, mapeando a labirinto através da disposição das paredes e decidindo aonde ir com base nos caminhos disponíveis. & O micromouse deve usar as paredes a sua disposição e o caminho que estiver livre para percorrer o labirinto e mapear seu percurso & RF04, RF06, RF07, RF 08 & Prioridade: Must Have 
+\\ \hline
+
+\textbf{US06} & Como operador, quero que o micromouse percorra o labirinto mais rapidamente, comparado com a velocidade de mapeamento. & O micromouse deve ser mais veloz no seu percurso, depois de mapear o labirinto. & RF23 & Prioridade: Should Have \\ \hline
+
+\textbf{US07} & Como operador, quero que conseguir visualizar e comparar os dados da trajetória percorrida, consumo de bateria, velocidade média do micromouse, tempo de execução e o mapa do labirinto por meio de uma interface web & O sistema deve exibir o consumo de bateria, velocidade média do micromouse, tempo de execução e o mapa do labirinto em tempo real na interface web. & RF09, RF10, RF12, RF14, RF16, RF22, RF24 & Prioridade: Must Have \\ \hline
+
+\end{tabular}
+\end{center}
+\label{US}
+\end{table}
+
+\subsection{Descrição da Arquitetura da Solução de Software Proposta}
+
+A arquitetura de software foi projetada para orquestrar a navegação autónoma do micromouse e fornecer uma plataforma robusta para monitorização em tempo real e armazenamento do histórico de execuções. O sistema adota o padrão \textbf{Cliente-Servidor} operando em rede local, garantindo independência de serviços externos. A aplicação web foi estruturada sob os princípios do padrão arquitetural \textbf{MVC (Model-View-Controller)}, adaptado para o desenvolvimento web moderno em componentes.
+
+\begin{figure}
+    \centering
+    \includegraphics[width=0.5\linewidth]{figuras/diagrama_arquitetura.png}
+    \caption{Diagrama da Arquitetura}
+    \label{fig:placeholder}
+\end{figure}
+
+As tecnologias selecionadas para compor a solução dividem-se em dois escopos principais:
 \begin{itemize}
-    \item \textcolor{red}{ \textbf{Diagrama BPMN para entender o \textit{software} proposto:} deve deixar claro os principais atores do sistema, suas atividades (de negócios), insumos e resultados.}
-    \item \textcolor{red}{\textbf{\textit{Backlog} funcional do \textit{software}:}}
-    \begin{itemize}
-        \item \textcolor{red}{ Escrito no formato de histórias de usuário ou casos de uso (decisão da equipe);}
-        \item \textcolor{red}{ Ao declarar o \textit{backlog} de requisitos funcionais, usar a  classificação de MoSCoW (\textit{Must have}, \textit{Should have} e \textit{Could have}),  para um melhor entendimento do próprio \textit{backlog}.}
-    \end{itemize}
-    \item \textcolor{red}{\textbf{ \textit{Backlog} não-funcional do \textit{software}:}}
-    \begin{itemize}
-        \item \textcolor{red}{ Descrever os requisitos não-funcionais de forma objetiva;}
-        \item \textcolor{red}{ Mais facilmente, mais rapidamente, são descrições subjetivas não-válidas. Um exemplo de requisito não-funcional de desempenho: ``a página deve carregar em até 5s quando em conexão 4G''. }
-    \end{itemize}
-    \item \textcolor{red}{ \textbf{Diagrama de casos de uso,} contendo os atores do sistema, os requisitos com os quais eles interagem e os tipos de relacionamentos entre requisitos realizados por um mesmo ator (ex.: \textit{include}, \textit{extend}). Obs.: este é um diagrama sobre requisitos funcionais.}
-    \item \textcolor{red}{ \textbf{Descrição da arquitetura da solução de \textit{software} proposta:}}
-    \begin{itemize}
-        \item \textcolor{red}{ Propósito do \textit{software} (qual o seu papel no sistema);}
-        \item \textcolor{red}{ Estilo arquitetural contendo:}
-        \begin{itemize}
-            \item \textcolor{red}{ Padrão adotado: MVC, MVP, Microsserviços, Monolítico, etc (Justificar);}
-            \item \textcolor{red}{ Linguagens de programação: Java, Python, C\#, JavaScript, etc.}
-            \item \textcolor{red}{ \textit{Frameworks} e bibliotecas: Spring Boot, .NET Core, React, Angular, Django, etc.}
-            \item \textcolor{red}{ Banco de dados: Relacional (PostgreSQL, MySQL, etc) X NãoSQL (MongoDB,etc). }
-        \end{itemize}
-        \item \textcolor{red}{ Diagrama de alto nível: representação esquemática dos componentes da arquitetura, suas responsabilidades e comunicações, esclarecendo a composição do \textit{front-end} e do \textit{back-end}.}
-    \end{itemize}
-    \item \textcolor{red}{ \textbf{Persistência de dados:} diagrama de entidade relacionamento do banco de dados usado na solução proposta.}
-    \item \textcolor{red}{ \textbf{Análise de dados:} as variáveis definidas nos requisitos do projeto em abordagem numérica e gráfica.}
-    \item \textcolor{red}{ \textbf{Diagrama de estados} esclarecendo os estados assumidos pelo \textit{software} e os eventos que causam as mudanças de estado do \textit{software}.}
-    \item \textcolor{red}{ \textbf{Protótipo funcional do \textit{software}, navegável.}}
-    \item \textcolor{red}{\textbf{ Roteiro de testes funcionais:} }
-    \begin{itemize}
-        \item \textcolor{red}{Código do caso de teste;}
-        \item \textcolor{red}{Nome do caso de teste;}
-        \item \textcolor{red}{Tipo do caso de teste (unitário, integrado ou sistema);}
-        \item \textcolor{red}{ Objetivo do caso de teste;}
-        \item \textcolor{red}{ Pré-condições do sistema para o teste ser realizado;}
-        \item \textcolor{red}{ Descrição dos procedimentos a serem executados para o teste;}
-        \item \textcolor{red}{ Resultado esperado para o teste ser aprovado (pós-condição após realizado o teste);}
-        \item \textcolor{red}{ Especificação do reparo a ser executado (caso o teste não seja aprovado);}
-        \item \textcolor{red}{ Resultado após reparo (o caso do teste ser necessário de ser repetido após reparo).}
-    \end{itemize}
+    \item \textbf{Firmware (C++):} Linguagem escolhida pela alta performance na execução dos algoritmos de busca e mapeamento, além de permitir o controlo de baixo nível necessário para comandar atuadores e processar dados de sensores.
+    \item \textbf{Sistema Web (TypeScript/JavaScript):} Utilização do framework \textbf{Next.js}, que integra API (Backend) e interface de utilizador (Frontend). Para a persistência, utiliza-se o \textbf{Prisma ORM} com base de dados \textbf{SQLite}, ideal para centralizar os dados localmente.
 \end{itemize}
+
+A arquitetura do software é detalhada a seguir, estruturada conforme as visões do modelo $4+1$ do processo unificado:
+
+\subsubsection{Visão Lógica}
+O software divide-se nos Blocos de Software Embarcado e Software Web. O \textbf{Bloco de Software Embarcado (C++)} contém a inteligência de navegação: recebe entradas do ambiente, atualiza a matriz do labirinto e toma decisões de rota. Já o \textbf{Bloco de Software Web (Next.js)} lida com todas as informações passadas pelo bloco embarcado, disponibilizando rotas de API e painéis visuais.
+
+\subsubsection{Visão de Processos}
+O código C++ opera num laço não-bloqueante para garantir a fluidez da navegação. O algoritmo processa a próxima ação e transmite os dados (mapa, velocidade, tempo e bateria) via rede local. O \textbf{Backend do Next.js} repassa os dados instantaneamente para o navegador via eventos em tempo real, enquanto o \textbf{Frontend} reage às mudanças de estado para atualizar os gráficos dinamicamente.
+
+\subsubsection{Visão de Dados: Modelo Entidade-Relacionamento (MER)}
+A camada de dados foi modelada para separar as configurações estáticas dos labirintos das métricas dinâmicas geradas pelo software. 
+
+\begin{description}
+    \item[Entidade Labirinto:] Define o ambiente virtual da prova. Atributos: \textit{id} (PK), \textit{tipo} (4x4, 8x8, 16x16), \textit{tamanho\_celula\_cm} e \textit{descricao}.
+    \item[Entidade Corrida:] Regista o desempenho de cada tentativa. Atributos: \textit{id} (PK), \textit{labirinto\_id} (FK), \textit{data\_hora}, \textit{tempo\_conclusao}, \textit{velocidade\_media}, \textit{consumo\_bateria}, \textit{desafio\_cumprido} (S/N) e \textit{trajeto\_coordenadas}.
+    \item[Relacionamento:] Um \textbf{Labirinto} pode possuir várias \textbf{Corridas}, mas uma \textbf{Corrida} pertence a apenas um \textbf{Labirinto} (Relação 1:N).
+\end{description}
+
+Abaixo, apresenta-se o Diagrama Entidade-Relacionamento (DER) correspondente:
+
+\begin{figure}[ht]
+    \centering
+    \includegraphics[width=0.5\linewidth]{figuras/diagrama_der.png}
+    \caption{Diagrama Entidade-Relacionamento (DER) do Sistema.}
+    \label{fig:der_micromouse}
+\end{figure}
+
+\subsubsection{Visão de Implementação e Implantação}
+O código C++ é modularizado entre a lógica com o Algoritmo Frontier-Based Exploration e funções de I/O. A aplicação web segue a componentização React com comunicação tipada via Prisma. A implantação é feita em \textit{localhost} numa rede isolada para garantir latência mínima e segurança na execução.
+
+\subsubsection{Protótipo de Alta Fidelidade no Figma}
+
+Foi desenvolvido um protótipo de alta fidelidade no Figma para validar a interface e os fluxos de interação do sistema, incluindo a visualização do mapa de ocupação, os painéis de controlo do algoritmo Frontier-Based Exploration e a retroalimentação visual em tempo real. O protótipo serviu como base para testes de usabilidade e comunicação entre a equipa de desenvolvimento e os stakeholders. O projeto está disponível no seguinte link: \href{https://www.figma.com/design/hAd6xD3YEXpLAWpT3NWGVL/Projeto-Integrado-1---Mouse?node-id=0-1&t=yfaBe6EYSQN7qefh-1}{Link do Protótipo}.
+
+\begin{figure}[ht]
+    \centering
+
+    \fbox{\includegraphics[width=0.4\textwidth]{figuras/tela1.png}}
+    \hspace{0.5cm}
+    \fbox{\includegraphics[width=0.4\textwidth]{figuras/tela2.png}}
+     \\[0.5cm]
+    \fbox{\includegraphics[width=0.4\textwidth]{figuras/tela3.png}}
+
+    \caption{Protótipo.}
+    \label{fig:cad}
+\end{figure}
+
+\subsection{Roteiro de Testes Funcionais}
+
+\begin{table}[ht]
+    \centering
+    \caption{Roteiro de testes funcionais do sistema}
+    \label{tab:roteiro_testes}
+    \resizebox{\textwidth}{!}{%
+        \begin{tabular}{|l|p{3cm}|p{4cm}|p{3.5cm}|p{4.5cm}|p{4cm}|}
+            \hline
+            \textbf{Código} & 
+            \textbf{Nome} & 
+            \textbf{Objetivo} & 
+            \textbf{Pré-condições} & 
+            \textbf{Procedimentos} & 
+            \textbf{Resultado Esperado} \\ 
+            \hline
+            
+            CT-01 & 
+            Início da Navegação & 
+            Verificar início independente. & 
+            Robô na célula inicial e ligado. & 
+            1. Acionar ativação.\newline 2. Afastar as mãos e observar. & 
+            Início imediato do movimento sem auxílio humano. \\ 
+            \hline
+            
+            CT-02 & 
+            Detecção de Paredes & 
+            Validar sensores ToF. & 
+            Robô em movimento com obstáculo à frente. & 
+            1. Deixar o robô navegar.\newline 2. Observar reação frontal. & 
+            Detecção da parede e mudança de trajetória antes da colisão. \\ 
+            \hline
+            
+            CT-03 & 
+            Telemetria Web & 
+            Validar envio de dados Wi-Fi. & 
+            Robô conectado; Interface web aberta. & 
+            1. Movimentar o robô.\newline 2. Checar painel web. & 
+            Exibição de velocidade e bateria com atualização em tempo real. \\ 
+            \hline
+            
+            CT-04 & 
+            Parada de Emergência & 
+            Garantir parada rápida. & 
+            Micromouse em movimento contínuo. & 
+            1. Enviar comando de parada.\newline 2. Medir tempo de resposta. & 
+            Parada total dos motores em menos de 2 segundos. \\ 
+            \hline
+            
+            CT-05 & 
+            Mapeamento & 
+            Validar registro do labirinto. & 
+            Labirinto estruturado e robô ativo. & 
+            1. Executar ciclo de navegação.\newline 2. Conferir mapa gerado. & 
+            Geração progressiva do mapa no sistema conforme exploração. \\ 
+            \hline
+            
+            CT-06 & 
+            Identificação do Objetivo & 
+            Validar alcance da área central. & 
+            Robô em busca da área central. & 
+            1. Deixar o robô encontrar o centro.\newline 2. Observar status. & 
+            Identificação correta do ponto final e sinalização de sucesso. \\ 
+            \hline
+        \end{tabular}%
+    }
+\end{table}
+
+%\textcolor{red}{Itens fundamentais:}
+
+%\begin{itemize}
+ %   \item \textcolor{red}{ \textbf{Diagrama Atividades UML:}  descrever e explicar o fluxo do comportamento funcional do produto proposto, evidenciando, de forma clara e estruturada, como as atividades são executadas, em que ordem e sob quais condições. Esse diagrama permite compreender o funcionamento dinâmico do sistema, destacando:}
+
+  %  \begin{itemize}
+   %     \item \textcolor{red}{ os principais atores (usuários ou sistemas externos) envolvidos no processo;
+    %    \item as atividades de negócio realizadas por cada ator ou pelo próprio sistema;
+     %   \item os insumos (entradas) necessários para a execução das atividades;
+      %  \item os resultados (saídas) gerados ao longo do fluxo;
+       % \item os pontos de decisão, paralelismo e sincronização das atividades;
+        %\item Entre as notações mais relevantes, destacam-se o estado iniciail e final, atividades, nós de decisão e junção, barras de bifurcação, Raias (\textit{swimlanes}) e Fluxos de controle. }
+        %\end{itemize}
+
+%    \item \textcolor{red}{\textbf{\textit{Backlog} do Produto}}
+ %   \begin{itemize}
+     %   \item \textcolor{red}{ Descrever os   requisitos funcionais (RF) com a técnica de documentação e especificação de história de usuário (HU);}
+      %  \item \textcolor{red}{ Descrever os requisitos não-funcionais (RNF) de forma objetiva; Mais facilmente, mais rapidamente, mais responsivo, de fácil uso, são descrições subjetivas não-válidas. Um exemplo de requisito não-funcional de desempenho: ``a página deve carregar em até 5s quando em conexão 4G''. }
+      %  \item \textcolor{red}{ Ao descrever os requisitos (RF e RNF), usar a  classificação MoSCoW (\textit{Must have}, \textit{Should have} e \textit{Could have}),  para auxiliar a priorização dos itens do backlog.}
+       % \item \textcolor{red}{ Protótipos de interfafe gráfica do \textit{software} em alta fidelidade.}
+      %  \begin{itemize}
+         %   \item \textcolor{red}{\textbf{ Todas HUs devem conter sua descrição (Eu-Como-Para), critérios de aceitação e protótipos de interface, documentadas no github. }}
+         %   \end{itemize} 
+
+    %    \end{itemize}
+
+   % \item \textcolor{red}{ \textbf{Descrição da arquitetura da solução de \textit{software} proposta:}}
+   % \begin{itemize}
+    
+       % \item \textcolor{red}{ Esta subseção deve contemplar o documento de arquitetura do sistema e deve ser estruturado segundo as visões (4+1) previstas no processo unificado (UP): lógica, de processos;  implementação, implantação e dados (substuirá a visão de casos de uso).}
+        
+        %\item \textcolor{red}{ Propósito do \textit{software} (qual o seu papel no sistema);}
+      %  \item \textcolor{red}{ Padrão adotado: MVC, MVP, Microsserviços, Monolítico, etc (Justificar);}
+      %  \item \textcolor{red}{ Linguagens de programação: Java, Python, C\#, JavaScript, etc.}
+       % \item \textcolor{red}{ \textit{Frameworks} e bibliotecas: Spring Boot, .NET Core, React, Angular, Django, etc.}
+       %     \item \textcolor{red}{ Banco de dados: Relacional (PostgreSQL, MySQL, etc) X NãoSQL (MongoDB,etc). }
+       % \item \textcolor{red}{Persistência de dados: Modelo Entidade‑Relacionamento (MER) e seu respectivo Diagrama Entidade‑Relacionamento (DER), aplicáveis quando a solução utiliza banco de dados relacional; alternativamente, diagrama de estrutura de documentos, empregado nos casos em que a arquitetura adota banco de dados não relacional.}
+       %  \end{itemize}     
+    
+   % \item \textcolor{red}{\textbf{ Roteiro de testes funcionais:} }
+   % \begin{itemize}
+       % \item \textcolor{red}{Código do caso de teste;}
+      %  \item \textcolor{red}{Nome do caso de teste;}
+     %   \item \textcolor{red}{ Objetivo do caso de teste;}
+   %     \item \textcolor{red}{ Pré-condições do sistema para o teste ser realizado, quando se aplicar;}
+    %    \item \textcolor{red}{ Descrição dos procedimentos a serem executados para o teste;}
+     %   \item \textcolor{red}{ Resultado esperado para o teste ser aprovado (pós-condição após realizado o teste);}
+  %  \end{itemize}
+%\end{itemize}
 
 
 % \textcolor{red}{Com relação ao \textit{software}, será necessário apresentar os seguintes itens: % pacotes de componentes de \textit{software}, suas funções e características, e explicar as decisões de projeto:
@@ -151,3 +474,4 @@ As principais vantagens de utilizar a \textbf{Impressora 3D} são:
 % \end{enumerate}
 % }
 %\textcolor{red}{Com relação ao \textit{software}, será necessário apresentar pacotes de componentes de \textit{software}, suas funções e características, e explicar as decisões de projeto.}
+

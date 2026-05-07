@@ -8,8 +8,8 @@
 \begin{tabular}{|c|c|c|}
 \hline
 \textbf{Geral}          & \textbf{Previsto} & \textbf{Realizado} \\ \hline
-Início do projeto       & xx/xx/20xx        & xx/xx/20xx         \\ \hline
-Fim do projeto          & xx/xx/20xx        & xx/xx/20xx         \\ \hline
+Início do projeto       & 09/04/2026        & 09/04/2026         \\ \hline
+Fim do projeto          & 08/07/2026        & xx/xx/20xx         \\ \hline
 \end{tabular}
 \end{center}
 \end{table}
@@ -21,29 +21,62 @@ Fim do projeto          & xx/xx/20xx        & xx/xx/20xx         \\ \hline
 \hline
 & \textbf{Início} & \textbf{Início} & \textbf{Fim} & \textbf{Fim} & \textbf{Atividades} & \\
 \textbf{Atividade} & \textbf{Previsto} & \textbf{Realizado} & \textbf{Previsto} & \textbf{Realizado} & \textbf{Predecessoras} & \textbf{Responsáveis}\\ \hline
-1 - ABC                       & DD/MM/AAAA               & DD/MM/AAAA                & DD/MM/AAAA               & DD/MM/AAAA                & ---                               & Fulano \\ \hline
-2 - DEF                       & DD/MM/AAAA               & DD/MM/AAAA                & DD/MM/AAAA               & DD/MM/AAAA                & 1                                 & Fulano \\ \hline
-3 - GHI                       & DD/MM/AAAA               & DD/MM/AAAA                & DD/MM/AAAA               & DD/MM/AAAA                & 1, 2                              & Beltrano \\ \hline
-4 - JKL                       & DD/MM/AAAA               & DD/MM/AAAA                & DD/MM/AAAA               & DD/MM/AAAA                & 3                                 & Beltrano \\ \hline
-5 - MNO                       & DD/MM/AAAA               & DD/MM/AAAA                & DD/MM/AAAA               & DD/MM/AAAA                & 1, 3, 4                           & Ciclano \\ \hline
+
+1 - Definição da EAP                & 09/04/2026 & 09/04/2026 & 03/05/2026 & 03/05/2026 & -             & Documentação \\ \hline
+2 - Definições de Eletrônica        & 11/04/2026 & 11/04/2026 & 09/05/2026 & 09/05/2026 & 1             & Eletrônica   \\ \hline
+3 - Definições de Energia           & 11/04/2026 & 11/04/2026 & 09/05/2026 & 09/05/2026 & 1             & Energia      \\ \hline
+4 - Definições de Estruturas        & 11/04/2026 & 11/04/2026 & 09/05/2026 & 09/05/2026 & 1             & Estruturas   \\ \hline
+5 - Definições de Software          & 11/04/2026 & 11/04/2026 & 09/05/2026 & 09/05/2026 & 1             & Software     \\ \hline
+6 - Ponto de Controle 1             & 20/04/2026 & 20/04/2026 & 11/05/2026 & 11/05/2026 & 1,2,3,4,5     & Documentação \\ \hline
+
 \end{tabular}
 \end{center}
 \end{table}
-
-
 
 \begin{table}[htpb]
 \begin{center}
-\caption{Justificativas para atrasos ou não-conclusão de atividades.}
-\begin{tabular}{|c|c|} \hline
-\textbf{Atividade} & \textbf{Justificativa}  \\ \hline 
-    3 - GHI &
-    O material solicitado não foi entregue no prazo pelo fornecedor. \\ \hline
-    5 - MNO &
-    A equipe responsável pelo desenvolvimento não finalizou a atividade. \\ \hline
+\caption{Cronograma específico - Área de Energia.}
+\begin{tabular}{|c|c|c|c|c|c|}
+\hline
+& \textbf{Início} & \textbf{Início} & \textbf{Fim} & \textbf{Fim} & \\
+\textbf{Atividade de Energia} & \textbf{Previsto} & \textbf{Realizado} & \textbf{Previsto} & \textbf{Realizado} & \textbf{Predecessoras} \\ \hline
+
+E1 - Power Budget e Dimensionamento      & 12/04/2026 & 12/04/2026 & 05/05/2026 & 05/05/2026 & 3 \\ \hline
+E2 - Montagem do Segundo Pack com BMS    & 12/05/2026 & --/--/2026 & 18/05/2026 & --/--/2026 & 2, 3 \\ \hline
+E3 - Calibração e Validação do INA219    & 01/06/2026 & --/--/2026 & 10/06/2026 & --/--/2026 & E2 \\ \hline
+E4 - Verificação de Funcionamento Final  & 01/07/2026 & --/--/2026 & 07/07/2026 & --/--/2026 & E3 \\ \hline
+
 \end{tabular}
 \end{center}
 \end{table}
+
+% \begin{table}[htpb]
+%\begin{center}
+%\caption{Justificativas para atrasos ou não-conclusão de atividades.}
+%\begin{tabular}{|c|c|} \hline
+%\textbf{Atividade} & \textbf{Justificativa}  \\ \hline 
+    %3 - GHI &
+  %  O material solicitado não foi entregue no prazo pelo fornecedor. \\ \hline
+   % 5 - MNO &
+   % A equipe responsável pelo desenvolvimento não finalizou a atividade. \\ \hline
+%\end{tabular}
+%\end{center}
+%\end{table}
+
+
+
+% \begin{table}[htpb]
+%\begin{center}
+%\caption{Justificativas para atrasos ou não-conclusão de atividades.}
+%\begin{tabular}{|c|c|} \hline
+%\textbf{Atividade} & \textbf{Justificativa}  \\ \hline 
+    %3 - GHI &
+  %  O material solicitado não foi entregue no prazo pelo fornecedor. \\ \hline
+   % 5 - MNO &
+   % A equipe responsável pelo desenvolvimento não finalizou a atividade. \\ \hline
+%\end{tabular}
+%\end{center}
+%\end{table}
 
 
 
