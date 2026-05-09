@@ -52,7 +52,21 @@
 \textcolor{red}{Itens fundamentais:}
 
 \begin{itemize}
-    \item \textcolor{red}{ \textbf{Diagrama BPMN para entender o \textit{software} proposto:} deve deixar claro os principais atores do sistema, suas atividades (de negócios), insumos e resultados.}
+\subsection{Diagrama de Atividades UML}
+
+O diagrama de atividades UML apresentado indica o funcionamento do robô Micromouse em seu curso de navegação em um labirinto. Este fluxo está organizado em raias, que separam as responsabilidades entre sensores, processador central e atuadores. 
+
+Para iniciar a atividade, os sensores devem capturar os dados do ambiente do labirinto, como distância e orientação, servindo assim como entradas do sistema. A partir desse momento, o processador central busca realizar o tratamento dessas informações, tomando decisões sobre a movimentação do robô e verificando obstáculos ao definir a melhor rota.
+
+A execução paralela de atividades é demonstrada no diagrama ao atualizar o mapa do labirinto e calcular a correção de trajetória. Com o término do processamento, atuadores executam comandos de movimento físicos que buscam a saída do sistema. Desta forma o robô verifica se alcançou a coordenada estipulada. Caso contrário, o ciclo de navegação é repetido até atingir o objetivo final.
+
+\begin{figure}[h!]
+    \centering
+    \includegraphics[width=1\linewidth]{figuras/DiagramaDeAtividadesUMLMicromouse.png}
+    \caption{Diagrama de Atividades UML}
+    \label{fig:placeholder}
+\end{figure}
+
     \item \textcolor{red}{\textbf{\textit{Backlog} funcional do \textit{software}:}}
     \begin{itemize}
         \item \textcolor{red}{ Escrito no formato de histórias de usuário ou casos de uso (decisão da equipe);}
