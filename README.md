@@ -1,12 +1,24 @@
-# MicroMouse - Grupo 01
+# MrBombastic - Grupo 01
 
 Repositório do projeto de um robô autônomo MicroMouse para a disciplina de Projeto Integrador 1 (PI1) da FCTE-UnB.
 
 ## Equipe
-* **[Nome]** - Estrutura
-* **[Nome]** - Eletrônica
-* **[Nome]** - Energia
-* **[Nome]** - Software
+
+* **Arthur Guilherme Aquino** - Software
+* **Arthur Luiz Silva Guedes** - Eletrônica
+* **Enzo Macedo da Motta de Mello** - Estrutura
+* **Felipe de Castro Quixabeira** - Eletrônica (Gerente)
+* **Fernando de Melo Colli** - Energia (Gerente) e Eletrônica
+* **João Igor Pereira da Costa** - Eletrônica e Software
+* **Magno Luiz Vale Vieira** - Energia e Software
+* **Maria Luisa Alves Rodrigues** - Eletrônica
+* **Mariana Pereira Schumann** - Estrutura (Gerente)
+* **Matheus de Alcantara da Silva Campos** - Software
+* **Raphaela Guimarães de Araujo dos Santos** - Estrutura
+* **Renan Pereira Reis** - Software (Gerente)
+* **Ricardo Henrique Silva Rodrigues** - Software
+* **Tiago Lemes Teixeira** - Gerente Geral
+* **Vilmar Jose Fagundes dos Passos Junior** - Estrutura
 
 ## Estrutura de Pastas
 * **`docs/relatorio/`**: Relatório técnico oficial (LaTeX).
