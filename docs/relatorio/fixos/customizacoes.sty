@@ -10,7 +10,7 @@
 %% version 2005/12/01 or later.
 %%
 %% This work has the LPPL maintenance status `maintained'.
-%%
+%% 
 %% The Current Maintainer of this work is SEU_NOME, SEU_EMAIL
 %%
 %% Further information about abnTeX2 are available on https://github.com/abntex/abntex2
@@ -24,6 +24,9 @@
 
 \newcommand{\palavraChaveUm}[1]{\def\imprimirpalavrachaveum{#1}}
 \newcommand{\palavraChaveDois}[1]{\def\imprimirpalavrachavedois{#1}}
+\newcommand{\palavraChaveTres}[1]{\def\imprimirpalavrachavetres{#1}}
+\newcommand{\palavraChaveQuatro}[1]{\def\imprimirpalavrachavequatro{#1}}
+\newcommand{\palavraChaveCinco}[1]{\def\imprimirpalavrachavecinco{#1}}
 
 \newcommand{\cdu}[1]{\def\nomecdu{#1}}
 \newcommand{\dataDaAprovacao}[1]{\def\imprimirdatadaaprovacao{#1}}
@@ -37,7 +40,7 @@
 			\vfill
 			\centering
 			\includegraphics[width=\paperwidth,height=\paperheight,%
-				keepaspectratio]{figuras/capa.pdf}%
+				keepaspectratio]{figuras/capa.eps}%
 			\vfill
 		}
 	}
@@ -61,18 +64,18 @@
 
     {\ABNTEXchapterfont\bfseries\LARGE\imprimirtitulo}
     \vspace*{\fill}
-
+    
 	\begin{flushright}
     	\textbf{{\large{Autor: \imprimirautor}}}
 		\par
     	\textbf{{\large{Orientador: \imprimirorientador}}}
 	\end{flushright}
-
+		
     \vspace*{0.2in}
     \textbf{{\large\imprimirlocal}}
     \par
     \textbf{{\large\imprimirdata}}
-
+    
     \vspace*{1in}
   \end{capa}
 }
@@ -80,3 +83,5 @@
 % ---
 % FIM DAS CUSTOMIZACOES PARA A FACULDADE UNB GAMA
 % ---
+
+

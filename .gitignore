@@ -1,6 +1,7 @@
 # Geral
 .DS_Store
 .vscode
+*:Zone.Identifier
 
 # Adicione outros arquivos a serem ignorados aqui
 # ...
