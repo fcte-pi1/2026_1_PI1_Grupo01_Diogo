@@ -8,42 +8,96 @@
 \begin{tabular}{|c|c|c|}
 \hline
 \textbf{Geral}          & \textbf{Previsto} & \textbf{Realizado} \\ \hline
-Início do projeto       & xx/xx/20xx        & xx/xx/20xx         \\ \hline
-Fim do projeto          & xx/xx/20xx        & xx/xx/20xx         \\ \hline
+Início do projeto       & 09/04/2026        & 09/04/2026         \\ \hline
+Fim do projeto          & 08/07/2026        & 08/07/2026         \\ \hline
 \end{tabular}
 \end{center}
 \end{table}
 
+\newpage
+\thispagestyle{empty}
 \begin{table}[htpb]
-\begin{center}
+\centering
 \caption{Cronograma por atividade.}
+\footnotesize
+\resizebox{\textwidth}{!}{
 \begin{tabular}{|c|c|c|c|c|c|c|}
 \hline
 & \textbf{Início} & \textbf{Início} & \textbf{Fim} & \textbf{Fim} & \textbf{Atividades} & \\
 \textbf{Atividade} & \textbf{Previsto} & \textbf{Realizado} & \textbf{Previsto} & \textbf{Realizado} & \textbf{Predecessoras} & \textbf{Responsáveis}\\ \hline
-1 - ABC                       & DD/MM/AAAA               & DD/MM/AAAA                & DD/MM/AAAA               & DD/MM/AAAA                & ---                               & Fulano \\ \hline
-2 - DEF                       & DD/MM/AAAA               & DD/MM/AAAA                & DD/MM/AAAA               & DD/MM/AAAA                & 1                                 & Fulano \\ \hline
-3 - GHI                       & DD/MM/AAAA               & DD/MM/AAAA                & DD/MM/AAAA               & DD/MM/AAAA                & 1, 2                              & Beltrano \\ \hline
-4 - JKL                       & DD/MM/AAAA               & DD/MM/AAAA                & DD/MM/AAAA               & DD/MM/AAAA                & 3                                 & Beltrano \\ \hline
-5 - MNO                       & DD/MM/AAAA               & DD/MM/AAAA                & DD/MM/AAAA               & DD/MM/AAAA                & 1, 3, 4                           & Ciclano \\ \hline
+
+1 - Definição da EAP & 09/04/2026 & 09/04/2026 & 03/05/2026 & 03/05/2026 & - & Documentação \\ \hline
+2 - Seleção do Microcontrolador e Análise de Conectividade & 12/04/2026 & 12/04/2026 & 04/05/2026 & 04/05/2026 & - & Eletrônica \\ \hline
+3 - Dimensionamento & 12/04/2026 & 12/04/2026 & 04/05/2026 & 04/05/2026 & - & Eletrônica \\ \hline
+4 - Análise do Consumo Energético & 12/04/2026 & 12/04/2026 & 04/05/2026 & 04/05/2026 & - & Energia \\ \hline
+5 - Planejamento do Chassi e do Sistema de Locomoção & 12/04/2026 & 12/04/2026 & 04/05/2026 & 04/05/2026 & - & Estruturas \\ \hline
+6 - Planejamento do Labirinto de Testes & 12/04/2026 & 12/04/2026 & 04/05/2026 & 04/05/2026 & - & Estruturas \\ \hline
+7 - Backlog do Produto & 27/04/2026 & 27/04/2026 & 04/05/2026 & 04/05/2026 & - & Software \\ \hline
+8 - Diagrama Atividades UML & 27/04/2026 & 27/04/2026 & 09/05/2026 & 09/05/2026 & - & Software \\ \hline
+9 - Descrição da Arquitetura & 27/04/2026 & 27/04/2026 & 09/05/2026 & 09/05/2026 & 7 & Software \\ \hline
+10 - Diagrama de Blocos e Esquemático & 04/05/2026 & 04/05/2026 & 09/05/2026 & 09/05/2026 & - & Eletrônica \\ \hline
+11 - Desenho em CAD do Micromouse e do labirinto & 04/05/2026 & 04/05/2026 & 09/05/2026 & 09/05/2026 & 5,6 & Estruturas \\ \hline
+12 - Roteiro de testes funcionais do micromouse & 04/05/2026 & 04/05/2026 & 09/05/2026 & 09/05/2026 & 7,8,9 & Software \\ \hline
+13 - Definições de Eletrônica & 18/04/2026 & 18/04/2026 & 10/05/2026 & 10/05/2026 & 2,10 & Eletrônica \\ \hline
+14 - Definições de Energia & 18/04/2026 & 18/04/2026 & 10/05/2026 & 10/05/2026 & 4 & Energia \\ \hline
+15 - Definições de Estruturas & 18/04/2026 & 18/04/2026 & 10/05/2026 & 10/05/2026 & 5,6,11 & Estruturas \\ \hline
+16 - Definições de Software & 18/04/2026 & 18/04/2026 & 10/05/2026 & 10/05/2026 & 7,8,9,12 & Software \\ \hline
+17 - Ponto de Controle 1 & 20/04/2026 & 20/04/2026 & 11/05/2026 & 11/05/2026 & 13,14,15,16 & Documentação \\ \hline
+
+18 - Montagem do Pack de Bateria 2S & 12/05/2026 &  & 19/05/2026 &  & 14 & Energia \\ \hline
+19 - Implementação da camada de comunicação (backend) & 12/05/2026 &  & 21/05/2026 &  & 16 & Software \\ \hline
+20 - Implementação da interface (frontend) & 12/05/2026 &  & 21/05/2026 &  & 16 & Software \\ \hline
+21 - Montagem e Verificação do Circuito de Alimentação & 19/05/2026 &  & 26/05/2026 &  & 18 & Energia \\ \hline
+22 - Fabricação e Impressão do Chassi & 12/05/2026 &  & 01/06/2026 &  & 15 & Estruturas \\ \hline
+23 - Integração entre o frontend e o backend & 22/05/2026 &  & 01/06/2026 &  & 3,19 & Software \\ \hline
+24 - Testes de Comunicação Wi-Fi e UART & 12/05/2026 &  & 02/06/2026 &  & 30 & Eletrônica \\ \hline
+25 - Implementação do algoritmo de navegação & 12/05/2026 &  & 02/06/2026 &  & 16 & Software \\ \hline
+26 - Implementação do algoritmo de caminho mínimo & 12/05/2026 &  & 02/06/2026 &  & 16 & Software \\ \hline
+27 - Integração dos Componentes na Placa Perfurada & 26/05/2026 &  & 02/06/2026 &  & 21,22 & Eletrônica \\ \hline
+28 - Testes dos Motores N20, Encoders e PID & 26/05/2026 &  & 06/06/2026 &  & 22,27 & Eletrônica \\ \hline
+
+29 - Testes Estruturais (Montagem, Encaixes, Carga) & 01/06/2026 &  & 06/06/2026 &  & 22 & Estruturas \\ \hline
+30 - Testes ESP32, VL53L0X e MPU-6050 & 02/06/2026 &  & 06/06/2026 &  & 27 & Eletrônica \\ \hline
+31 - Testes de Integração do Sistema Completo & 12/05/2026 &  & 07/06/2026 &  & 26,28,29,30 & Todas as equipes \\ \hline
+32 - Testes Automatizados em nível funcional (≥70\% cobertura) & 01/06/2026 &  & 07/06/2026 &  & 23 & Software \\ \hline
+33 - Testes E2E (Playwright / Cypress) & 01/06/2026 &  & 07/06/2026 &  & 32 & Software \\ \hline
+34 - Testes do INA219 e Validação Energética & 04/06/2026 &  & 07/06/2026 &  & 21 & Energia \\ \hline
+35 - Ponto de Controle 2 & 12/05/2026 &  & 08/06/2026 &  & 24,29,31,33,34 & Documentação \\ \hline
+36 - Testes Finais no labirinto de testes & 09/06/2026 &  & 06/07/2026 &  & - & Todas as equipes \\ \hline
+37 - Possíveis alterações & 09/06/2026 &  & 06/07/2026 &  & 36 & Todas as equipes \\ \hline
+38 - Relatório Final & 09/06/2026 &  & 08/07/2026 &  & 37 & Documentação \\ \hline
+
 \end{tabular}
-\end{center}
+}
 \end{table}
 
+% \begin{table}[htpb]
+%\begin{center}
+%\caption{Justificativas para atrasos ou não-conclusão de atividades.}
+%\begin{tabular}{|c|c|} \hline
+%\textbf{Atividade} & \textbf{Justificativa}  \\ \hline 
+    %3 - GHI &
+  %  O material solicitado não foi entregue no prazo pelo fornecedor. \\ \hline
+   % 5 - MNO &
+   % A equipe responsável pelo desenvolvimento não finalizou a atividade. \\ \hline
+%\end{tabular}
+%\end{center}
+%\end{table}
 
 
-\begin{table}[htpb]
-\begin{center}
-\caption{Justificativas para atrasos ou não-conclusão de atividades.}
-\begin{tabular}{|c|c|} \hline
-\textbf{Atividade} & \textbf{Justificativa}  \\ \hline 
-    3 - GHI &
-    O material solicitado não foi entregue no prazo pelo fornecedor. \\ \hline
-    5 - MNO &
-    A equipe responsável pelo desenvolvimento não finalizou a atividade. \\ \hline
-\end{tabular}
-\end{center}
-\end{table}
+
+% \begin{table}[htpb]
+%\begin{center}
+%\caption{Justificativas para atrasos ou não-conclusão de atividades.}
+%\begin{tabular}{|c|c|} \hline
+%\textbf{Atividade} & \textbf{Justificativa}  \\ \hline 
+    %3 - GHI &
+  %  O material solicitado não foi entregue no prazo pelo fornecedor. \\ \hline
+   % 5 - MNO &
+   % A equipe responsável pelo desenvolvimento não finalizou a atividade. \\ \hline
+%\end{tabular}
+%\end{center}
+%\end{table}
 
 
 
