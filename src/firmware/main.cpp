@@ -2,6 +2,7 @@
 #include "sensores/i2c_bus.h"
 #include "sensores/imu.h"
 #include "sensores/tof.h"
+#include "atuadores/motores.h"
 #include "config/pinos.h"
 
 void setup() {
@@ -20,10 +21,17 @@ void setup() {
         Serial.println("[SETUP] Falha nos ToF — verifique o hardware e reinicie");
     }
 
+    if (!motoresInit()) {
+        Serial.println("[SETUP] Falha ao inicializar motores — verifique o TB6612FNG");
+    }
+    motoresParar();
+
     Serial.println("[SETUP] Iniciando leitura contínua...\n");
 }
 
 void loop() {
+    motoresAtualizar();
+
     float giroZ = imuLerGiroZ();
 
     Serial.printf("Z=%+6.1f dps | ToF:", giroZ);

@@ -17,3 +17,16 @@
 // Pinos XSHUT devem ser saída — NÃO usar GPIO 34–39 (input-only)
 constexpr int     TOF_XSHUT_PINS[NUM_TOF] = { 25, 26, 32 };
 constexpr uint8_t TOF_ADDRESSES[NUM_TOF]  = { 0x30, 0x31, 0x32 };
+
+// --- Driver de Motores TB6612FNG ---
+// Ajustar estes GPIOs caso o esquemático final use outro roteamento.
+// Evitar GPIO 34-39: são somente entrada e não servem para PWM/direção.
+#define MOTOR_AIN1_PIN  16
+#define MOTOR_AIN2_PIN  17
+#define MOTOR_PWMA_PIN  18
+
+#define MOTOR_BIN1_PIN  19
+#define MOTOR_BIN2_PIN  23
+#define MOTOR_PWMB_PIN  27
+
+#define MOTOR_STBY_PIN  33
