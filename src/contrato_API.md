@@ -33,4 +33,28 @@ O firmware deve enviar e a API Web deve validar estritamente a estrutura e os ti
     "dist_esquerda_cm": 4.1,
     "dist_direita_cm": 15.0
   }
-}
+```
+## Dicionário de Dados e Tipagem
+
+| Campo              | Tipo      | Descrição                               |
+| ------------------ | --------- | --------------------------------------- |
+| `tempo_corrida_ms` | `integer` | Tempo total da corrida em milissegundos |
+| `posicao_x`        | `integer` | Coordenada X atual do robô              |
+| `posicao_y`        | `integer` | Coordenada Y atual do robô              |
+| `direcao_atual`    | `string`  | Direção atual do robô                   |
+| `estado_robo`      | `string`  | Estado operacional atual                |
+| `bateria_pct`      | `integer` | Percentual da bateria                   |
+| `leitura_sensores` | `object`  | Leituras atuais dos sensores            |
+| `dist_frente_cm`   | `float`   | Distância frontal em centímetros        |
+| `dist_esquerda_cm` | `float`   | Distância à esquerda em centímetros     |
+| `dist_direita_cm`  | `float`   | Distância à direita em centímetros      |
+
+
+---
+
+## Respostas da API (Status Codes)
+201 Created: Telemetria processada e armazenada com sucesso.
+
+400 Bad Request: Payload malformado, campos obrigatórios ausentes ou violação dos tipos/restrições definidos acima.
+
+500 Internal Server Error: Erro inesperado no processamento por parte do servidor.
