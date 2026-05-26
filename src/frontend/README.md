@@ -1,31 +1,32 @@
-Frontend
+# Frontend
+
 Diretório da interface de usuário (Dashboard) do projeto.
 
-Tecnologias
-Next.js (App Router)
+## Tecnologias
+- Next.js (App Router)
+- TypeScript
+- Tailwind CSS
 
-TypeScript
+## Como Rodar Localmente
 
-Tailwind CSS
+1. Acesse a pasta e instale as dependências:
+    ```bash
+    cd src/frontend
+    npm install
+    ```
 
-Como Rodar Localmente
-Acesse a pasta e instale as dependências:
+2. Inicie o servidor de desenvolvimento:
+    ```bash
+    npm run dev
+    ```
 
-Bash
-cd src/frontend
-npm install
-Inicie o servidor de desenvolvimento:
+3. Acesse http://localhost:3000 no navegador.
 
-Bash
-npm run dev
-Acesse http://localhost:3000 no navegador.
+## Estrutura de Pastas
 
-Estrutura de Pastas
-app/: Páginas, rotas e componentes da interface.
+- app/: Páginas, rotas e componentes da interface.
+- public/: Arquivos estáticos como imagens e ícones.
+- Raiz do diretório: Arquivos de configuração (tailwind.config.ts, tsconfig.json).
 
-public/: Arquivos estáticos como imagens e ícones.
-
-Raiz do diretório: Arquivos de configuração (tailwind.config.ts, tsconfig.json).
-
-[!WARNING]
-Código de API, rotas de banco de dados e regras de negócio do servidor devem ficar exclusivamente na pasta src/backend.
+> [!WARNING]
+> Código de API, rotas de banco de dados e regras de negócio do servidor devem ficar exclusivamente na pasta src/backend.
