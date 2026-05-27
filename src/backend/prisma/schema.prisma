@@ -1,7 +1,4 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Get a free hosted Postgres database in seconds: `npx create-db`
+// Issue: configurado SQLite com Prisma ORM para armazenar historico de navegacao e telemetria.
 
 generator client {
   provider = "prisma-client"
@@ -10,4 +7,56 @@ generator client {
 
 datasource db {
   provider = "sqlite"
+}
+
+model NavigationSession {
+  id        String            @id @default(uuid())
+  userId    String?           @map("user_id")
+  startedAt DateTime          @default(now()) @map("started_at")
+  endedAt   DateTime?         @map("ended_at")
+  createdAt DateTime          @default(now()) @map("created_at")
+  updatedAt DateTime          @updatedAt @map("updated_at")
+  events    NavigationEvent[]
+
+  @@index([userId])
+  @@index([startedAt])
+  @@map("navigation_sessions")
+}
+
+model NavigationEvent {
+  id         String            @id @default(uuid())
+  sessionId  String            @map("session_id")
+  url        String
+  path       String?
+  title      String?
+  referrer   String?
+  userAgent  String?           @map("user_agent")
+  metadata   String?
+  occurredAt DateTime          @default(now()) @map("occurred_at")
+  session    NavigationSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId])
+  @@index([occurredAt])
+  @@index([url])
+  @@map("navigation_events")
+}
+
+model TelemetryRecord {
+  id              String   @id @default(uuid())
+  sessionId       String?  @map("session_id")
+  robotId         String?  @map("robot_id")
+  sequence        Int?
+  batteryLevel    Float?   @map("battery_level")
+  positionX       Float?   @map("position_x")
+  positionY       Float?   @map("position_y")
+  headingDegrees  Float?   @map("heading_degrees")
+  linearVelocity  Float?   @map("linear_velocity")
+  angularVelocity Float?   @map("angular_velocity")
+  payload         String?
+  receivedAt      DateTime @default(now()) @map("received_at")
+
+  @@index([sessionId])
+  @@index([robotId])
+  @@index([receivedAt])
+  @@map("telemetry_records")
 }

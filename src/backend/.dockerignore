@@ -1,0 +1,10 @@
+node_modules
+.next
+generated
+data
+*.db
+*.db-journal
+.env
+npm-debug.log
+Dockerfile
+compose.yml
