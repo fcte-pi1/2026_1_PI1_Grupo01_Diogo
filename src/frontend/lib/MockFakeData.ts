@@ -8,8 +8,8 @@ export const mockTelemetria = {
   tempo_corrida_ms: 62000,
   posicao_x: 3,
   posicao_y: 4,
-  direcao_atual: "NORTE",
-  estado_robo: "EXPLORANDO",
+  direcao_atual: "NORTE" as const,
+  estado_robo: "EXPLORANDO" as const,
   bateria_pct: 82,
   leitura_sensores: {
     dist_frente_cm: 12.5,
