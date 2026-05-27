@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   Table,
   TableBody,
@@ -27,11 +28,12 @@ type Corrida = {
   index: number;
 };
 export function CorridasTable({ corridas }: { corridas: Corrida[] }) {
+  const router = useRouter();
   const [corridaParaApagar, setCorridaParaApagar] = useState<Corrida | null>(
     null,
   );
+
   function handleConfirmarApagar() {
-    // Rikas - Por enquanto só loga — integraremos com a API depois
     console.log("Apagar corrida:", corridaParaApagar?.id);
     setCorridaParaApagar(null);
   }
@@ -47,14 +49,21 @@ export function CorridasTable({ corridas }: { corridas: Corrida[] }) {
         </TableHeader>
         <TableBody>
           {corridas.map((corrida) => (
-            <TableRow key={corrida.id}>
+            <TableRow
+              key={corrida.id}
+              className="cursor-pointer hover:bg-muted"
+              onClick={() => router.push(`/runs/${corrida.id}`)}
+            >
               <TableCell>{corrida.nome}</TableCell>
               <TableCell>{corrida.index}</TableCell>
               <TableCell>
                 <Button
                   variant="ghost"
                   size="icon"
-                  onClick={() => setCorridaParaApagar(corrida)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setCorridaParaApagar(corrida);
+                  }}
                 >
                   <Trash2 className="h-4 w-4" />
                 </Button>
