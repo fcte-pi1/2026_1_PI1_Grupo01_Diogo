@@ -7,10 +7,10 @@ Especificação do protocolo de comunicação HTTP entre o firmware (ESP32) e o 
 - **Endpoint:** `POST` `http://[IP_LOCAL]:3000/api/telemetria`
 - **Content-Type:** `application/json`
 
-### Gatilho de Envio (Trigger)
+### Trigger
 1. **Mudança de Coordenada:** O ESP32 deve disparar a requisição imediatamente a cada alteração de posição `(X, Y)`.
-2. **Envio de Segurança (Heartbeat):** Caso o robô permaneça na mesma célula por mais de **1000 ms**, um envio deve ser feito obrigatoriamente.
-3. **Reset do Timer:** Qualquer envio bem-sucedido reinicia a contagem de tempo do gatilho de segurança.
+2. **Envio de Segurança:** Caso o robô permaneça na mesma célula por mais de **1000 ms**, um envio deve ser feito obrigatoriamente.
+3. **Reset do Timer:** Qualquer envio bem-sucedido reinicia a contagem de tempo.
 
 ---
 
