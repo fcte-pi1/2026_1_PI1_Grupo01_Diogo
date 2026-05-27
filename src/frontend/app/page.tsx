@@ -1,11 +1,3 @@
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
-  return (
-    <html lang="pt-BR">
-      <body>{children}</body>
-    </html>
-  );
+export default function Page() {
+  return <h1>Banco de Corridas</h1>;
 }
