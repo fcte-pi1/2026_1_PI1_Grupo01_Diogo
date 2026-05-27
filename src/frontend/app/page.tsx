@@ -1,3 +1,3 @@
 export default function Page() {
-  return <h1>Banco de Corridas</h1>;
+  return <h1>Historico de Corrida</h1>;
 }
