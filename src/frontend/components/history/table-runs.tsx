@@ -17,6 +17,7 @@ import {
   AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
+  AlertDialogMedia, // ← adicionar aqui
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Trash2, TriangleAlert } from "lucide-react";
@@ -62,12 +63,16 @@ export function CorridasTable({ corridas }: { corridas: Corrida[] }) {
           ))}
         </TableBody>
       </Table>
-
-      <AlertDialog open={corridaParaApagar !== null}>
+      <AlertDialog
+        open={corridaParaApagar !== null}
+        onOpenChange={(open) => !open && setCorridaParaApagar(null)}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle className="flex items-center gap-2">
-              <TriangleAlert className="h-5 w-5" />
+            <AlertDialogMedia>
+              <TriangleAlert />
+            </AlertDialogMedia>
+            <AlertDialogTitle>
               Deseja apagar a corrida "{corridaParaApagar?.index}"?
             </AlertDialogTitle>
             <AlertDialogDescription>
