@@ -8,10 +8,11 @@ import { ControlesPanel } from "@/components/runs/control-panel";
 import { SelecaoLabirinto } from "@/components/runs/control-sizeMaze";
 import { Minimapa } from "@/components/runs/minimap";
 import { Separator } from "@/components/ui/separator";
-
+import { useCorridaContext } from "@/lib/run-context";
 type Posicao = { x: number; y: number };
 
 export default function RunsPage() {
+  const { setCorridaEmAndamento } = useCorridaContext();
   const [tamanhoLabirinto, setTamanhoLabirinto] = useState<4 | 8 | 16>(16);
   const [telemetria, setTelemetria] = useState<Telemetria | null>(null);
   const [posicoes, setPosicoes] = useState<Posicao[]>([]);
@@ -23,6 +24,10 @@ export default function RunsPage() {
     async function fetchTelemetria() {
       const novasTelemetria = mockTelemetria;
       setTelemetria(novasTelemetria);
+      setCorridaEmAndamento(
+        novasTelemetria.estado_robo === "EXPLORANDO" ||
+          novasTelemetria.estado_robo === "VOLTANDO",
+      );
       setPosicoes((anterior) => {
         const posicaoJaVisitada = anterior.some(
           (p) =>

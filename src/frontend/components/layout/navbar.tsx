@@ -2,6 +2,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { useCorridaContext } from "@/lib/run-context";
 
 const navConfig: Record<string, { label: string; href: string }[]> = {
   "/": [
@@ -12,6 +13,7 @@ const navConfig: Record<string, { label: string; href: string }[]> = {
 };
 
 export function Navbar() {
+  const { corridaEmAndamento } = useCorridaContext();
   const pathname = usePathname();
   const navItems =
     navConfig[pathname] ??
@@ -27,8 +29,17 @@ export function Navbar() {
       </Link>
       <nav className="flex items-center gap-2">
         {navItems.map((item) => (
-          <Button key={item.label} variant="ghost" asChild>
-            <Link href={item.href}>{item.label}</Link>
+          <Button
+            key={item.label}
+            variant="ghost"
+            disabled={item.label === "Atual Corrida" && !corridaEmAndamento}
+            asChild={item.label !== "Atual Corrida" || corridaEmAndamento}
+          >
+            {item.label === "Atual Corrida" && !corridaEmAndamento ? (
+              <span>{item.label}</span>
+            ) : (
+              <Link href={item.href}>{item.label}</Link>
+            )}
           </Button>
         ))}
       </nav>
