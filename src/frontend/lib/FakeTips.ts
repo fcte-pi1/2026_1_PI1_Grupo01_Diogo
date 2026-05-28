@@ -1,7 +1,11 @@
-
 export type DirecaoAtual = "NORTE" | "SUL" | "LESTE" | "OESTE";
 
-export type EstadoRobo = "EXPLORANDO" | "VOLTANDO" | "PARADO" | "ERRO";
+export type EstadoRobo =
+  | "EXPLORANDO"
+  | "VOLTANDO"
+  | "PARADO"
+  | "ERRO"
+  | "CONCLUIDO";
 
 export type LeituraSensores = {
   dist_frente_cm: number;
