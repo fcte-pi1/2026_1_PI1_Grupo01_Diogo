@@ -6,8 +6,8 @@ export const mockCorridas = [
 
 export const mockTelemetria = {
   tempo_corrida_ms: 62000,
-  posicao_x: 3,
-  posicao_y: 4,
+  posicao_x: 1,
+  posicao_y: 1,
   direcao_atual: "NORTE" as const,
   estado_robo: "EXPLORANDO" as const,
   bateria_pct: 82,
@@ -17,3 +17,14 @@ export const mockTelemetria = {
     dist_direita_cm: 15.0,
   },
 };
+export const mockPosicoes = [
+  { x: 0, y: 0 },
+  { x: 1, y: 0 },
+  { x: 2, y: 0 },
+  { x: 2, y: 1 },
+  { x: 2, y: 2 },
+  { x: 3, y: 2 },
+  { x: 4, y: 2 },
+  { x: 4, y: 3 },
+  { x: 4, y: 4 },
+];

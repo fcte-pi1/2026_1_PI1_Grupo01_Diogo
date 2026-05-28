@@ -1,11 +1,14 @@
 import { Battery, Timer, Gauge } from "lucide-react";
 import { Telemetria } from "@/lib/FakeTips";
-import { Separator } from "@/components/ui/separator";
-import { formatarTempo } from "@/lib/utils";
+import { formatarTempo, traduzirEstado } from "@/lib/utils";
 
 export function TelemetriaPanel({ telemetria }: { telemetria: Telemetria }) {
   return (
     <div className="flex flex-col gap-6">
+      <div className="flex flex-col gap-1">
+        <p className="text-xs text-muted-foreground">Estado</p>
+        <p className="font-bold">{traduzirEstado(telemetria.estado_robo)}</p>
+      </div>
       <h2 className="text-2xl font-bold">Informações</h2>
 
       {/* Bateria e Velocidade lado a lado */}
@@ -37,8 +40,6 @@ export function TelemetriaPanel({ telemetria }: { telemetria: Telemetria }) {
           </p>
         </div>
       </div>
-
-      <Separator />
     </div>
   );
 }
