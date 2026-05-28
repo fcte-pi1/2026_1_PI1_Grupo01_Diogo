@@ -1,6 +1,5 @@
 import { Battery, Timer, Gauge } from "lucide-react";
 import { Telemetria } from "@/lib/FakeTips";
-import { Separator } from "@/components/ui/separator";
 import { formatarTempo, traduzirEstado } from "@/lib/utils";
 
 export function TelemetriaPanel({ telemetria }: { telemetria: Telemetria }) {
@@ -41,8 +40,6 @@ export function TelemetriaPanel({ telemetria }: { telemetria: Telemetria }) {
           </p>
         </div>
       </div>
-
-      <Separator />
     </div>
   );
 }

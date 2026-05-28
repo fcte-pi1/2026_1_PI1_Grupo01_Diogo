@@ -7,6 +7,7 @@ import { TelemetriaPanel } from "@/components/runs/telemetria-panel";
 import { ControlesPanel } from "@/components/runs/control-panel";
 import { SelecaoLabirinto } from "@/components/runs/control-sizeMaze";
 import { Minimapa } from "@/components/runs/minimap";
+import { Separator } from "@/components/ui/separator";
 
 type Posicao = { x: number; y: number };
 
@@ -59,6 +60,7 @@ export default function RunsPage() {
       </div>
       <div className="flex flex-col gap-6">
         <TelemetriaPanel telemetria={telemetria} />
+        <Separator />
         <ControlesPanel telemetria={telemetria} />
       </div>
     </div>
