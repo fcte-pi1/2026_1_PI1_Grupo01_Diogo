@@ -24,8 +24,8 @@ bool imuInit() {
 float imuLerGiroZ() {
     sensors_event_t a, g, temp;
     mpu.getEvent(&a, &g, &temp);
-    // Converter rad/s → °/s e subtrair offset de calibração
-    return (g.gyro.z * 180.0f / M_PI) - offsetGiroZ;
+    // Converter rad/s → °/s, aplicar sinal de montagem e subtrair offset de calibração
+    return ((g.gyro.z * 180.0f / M_PI) - offsetGiroZ) * IMU_GIRO_Z_SINAL;
 }
 
 void imuCalibrarOffsetZ(int amostras) {

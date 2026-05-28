@@ -3,6 +3,9 @@
 .vscode
 *:Zone.Identifier
 
+# PlatformIO build artifacts
+src/firmware/.pio/
+
 # Adicione outros arquivos a serem ignorados aqui
 # ...
 

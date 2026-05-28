@@ -6,7 +6,10 @@
 #define I2C_FREQ_HZ   400000  // 400 kHz; reduzir para 100000 se houver instabilidade
 
 // --- IMU MPU6050 ---
-#define MPU6050_ADDR  0x68  // 0x69 se AD0 ligado a VCC
+#define MPU6050_ADDR      0x68  // 0x69 se AD0 ligado a VCC
+// Sinal do eixo Z do giroscópio: +1 ou -1 conforme montagem física do sensor.
+// Se girar à esquerda produzir valores negativos, trocar para -1.
+#define IMU_GIRO_Z_SINAL  1
 
 // --- Sensores ToF VL53L0X ---
 // Confirmado pelo esquemático: 3 sensores (Frontal, Esquerda, Direita)
