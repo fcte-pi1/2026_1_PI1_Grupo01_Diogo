@@ -1,13 +1,37 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Get a free hosted Postgres database in seconds: `npx create-db`
-
 generator client {
-  provider = "prisma-client"
-  output   = "../generated/prisma"
+  provider = "prisma-client-js"
 }
 
 datasource db {
   provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+// Histórico das Corridas
+model Run {
+  id          String      @id @default(uuid())
+  status      String      @default("EM_ANDAMENTO") 
+  startedAt   DateTime    @default(now())
+  endedAt     DateTime? 
+  
+  telemetries Telemetry[] 
+
+  @@map("runs")
+}
+
+// Dados do Robô (Velocidade, Bateria, etc)
+model Telemetry {
+  id             String   @id @default(uuid())
+  runId          String   
+  
+  batteryLevel   Float    
+  positionX      Float    
+  positionY      Float
+  linearVelocity Float    
+  
+  timestamp      DateTime @default(now())
+
+  run            Run      @relation(fields: [runId], references: [id], onDelete: Cascade)
+
+  @@map("telemetries")
 }
