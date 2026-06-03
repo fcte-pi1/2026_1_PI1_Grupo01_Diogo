@@ -1,25 +1,31 @@
-// mock-robo.js
-const ENDPOINT = "http://localhost:3333/api/telemetry";
+// mocks/mock-robo.js
+const ENDPOINT = "http://localhost:3000/api/telemetria";
 
+let tempo = 0;
 let posX = 0;
 let posY = 0;
-let bateria = 100.0;
+let bateria = 100;
 
-console.log("Iniciando simulacao do robo...");
+console.log("Iniciando simulacao do robo conforme o contrato (Porta 3000)...");
+const meuRunIdUnico = "mock-" + Date.now();
 
 setInterval(async () => {
-  posX += 0.5;
-  posY += 0.2;
-  bateria -= 0.5;
-
+  
   const payload = {
-    runId: "corrida-simulada-001",
-    batteryLevel: parseFloat(bateria.toFixed(2)),
-    positionX: parseFloat(posX.toFixed(2)),
-    positionY: parseFloat(posY.toFixed(2)),
-    linearVelocity: 1.5
+    runId: meuRunIdUnico,
+    tempo_corrida_ms: tempo,
+    posicao_x: posX,
+    posicao_y: posY,
+    direcao_atual: "NORTE",
+    estado_robo: "EXPLORANDO",
+    bateria_pct: bateria,
+    leitura_sensores: {
+      dist_frente_cm: 12.5,
+      dist_esquerda_cm: 4.1,
+      dist_direita_cm: 15.0
+    }
   };
-
+  
   try {
     const res = await fetch(ENDPOINT, {
       method: "POST",
@@ -28,11 +34,17 @@ setInterval(async () => {
     });
 
     if (res.ok) {
-      console.log(`Enviado -> X: ${payload.positionX} | Y: ${payload.positionY} | Bat: ${payload.batteryLevel}%`);
+      console.log(`✅ Enviado -> X: ${payload.posicao_x} | Y: ${payload.posicao_y} | Bat: ${payload.bateria_pct}%`);
     } else {
-      console.log("Erro: Servidor recusou os dados.");
+      console.log(`❌ Erro: Servidor recusou os dados (Status: ${res.status}).`);
     }
   } catch (error) {
-    console.log("Erro: Falha ao conectar no servidor.");
+    console.log("🔌 Erro: Falha ao conectar no servidor. Ele está rodando?");
   }
+
+  tempo += 2000; 
+  posX += 1;     
+  posY += 1;
+  if (bateria > 10) bateria -= 1;
+
 }, 2000);
