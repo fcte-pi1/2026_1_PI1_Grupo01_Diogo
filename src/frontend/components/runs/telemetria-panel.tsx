@@ -1,8 +1,25 @@
-import { Battery, Timer, Gauge } from "lucide-react";
-import { Telemetria } from "@/lib/FakeTips";
+"use client";
+
+import { Battery, Gauge, Timer, Cpu } from "lucide-react";
 import { formatarTempo, traduzirEstado } from "@/lib/utils";
 
-export function TelemetriaPanel({ telemetria }: { telemetria: Telemetria }) {
+export type TelemetriaUI = {
+  id?: string;
+  runId?: string;
+  tempo_corrida_ms: number;
+  posicao_x: number;
+  posicao_y: number;
+  direcao_atual: string;
+  estado_robo: "PARADO" | "EXPLORANDO" | "VOLTANDO" | "ERRO";
+  bateria_pct: number;
+  velocidade_media: number;
+  distFrenteCm: number;
+  distEsquerdaCm: number;
+  distDireitaCm: number;
+};
+
+
+export function TelemetriaPanel({ telemetria }: { telemetria: TelemetriaUI }) {
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-1">
@@ -25,7 +42,7 @@ export function TelemetriaPanel({ telemetria }: { telemetria: Telemetria }) {
           <Gauge className="h-5 w-5" />
           <div>
             <p className="text-xs text-muted-foreground">Velocidade</p>
-            <p className="font-bold">100m/s</p>
+            <p className="font-bold">{telemetria.velocidade_media} cm/s</p>
           </div>
         </div>
       </div>
