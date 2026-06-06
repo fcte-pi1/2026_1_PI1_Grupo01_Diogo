@@ -1,11 +1,31 @@
-import { Battery, Timer, Gauge } from "lucide-react";
-import { Telemetria } from "@/lib/FakeTips";
-import { Separator } from "@/components/ui/separator";
-import { formatarTempo } from "@/lib/utils";
+"use client";
 
-export function TelemetriaPanel({ telemetria }: { telemetria: Telemetria }) {
+import { Battery, Gauge, Timer, Cpu } from "lucide-react";
+import { formatarTempo, traduzirEstado } from "@/lib/utils";
+
+export type TelemetriaUI = {
+  id?: string;
+  runId?: string;
+  tempo_corrida_ms: number;
+  posicao_x: number;
+  posicao_y: number;
+  direcao_atual: string;
+  estado_robo: "PARADO" | "EXPLORANDO" | "VOLTANDO" | "ERRO";
+  bateria_pct: number;
+  velocidade_media: number;
+  distFrenteCm: number;
+  distEsquerdaCm: number;
+  distDireitaCm: number;
+};
+
+
+export function TelemetriaPanel({ telemetria }: { telemetria: TelemetriaUI }) {
   return (
     <div className="flex flex-col gap-6">
+      <div className="flex flex-col gap-1">
+        <p className="text-xs text-muted-foreground">Estado</p>
+        <p className="font-bold">{traduzirEstado(telemetria.estado_robo)}</p>
+      </div>
       <h2 className="text-2xl font-bold">Informações</h2>
 
       {/* Bateria e Velocidade lado a lado */}
@@ -22,7 +42,7 @@ export function TelemetriaPanel({ telemetria }: { telemetria: Telemetria }) {
           <Gauge className="h-5 w-5" />
           <div>
             <p className="text-xs text-muted-foreground">Velocidade</p>
-            <p className="font-bold">100m/s</p>
+            <p className="font-bold">{telemetria.velocidade_media} cm/s</p>
           </div>
         </div>
       </div>
@@ -37,8 +57,6 @@ export function TelemetriaPanel({ telemetria }: { telemetria: Telemetria }) {
           </p>
         </div>
       </div>
-
-      <Separator />
     </div>
   );
 }
