@@ -47,4 +47,47 @@ export const TelemetryController = {
       });
     }
   },
+  async getRunById(req: Request, res: Response): Promise<void> {
+    try {
+     
+      const { id } = req.params as { id: string };
+
+      const run = await TelemetryService.getRunById(id);
+
+      if (!run) {
+        res.status(404).json({
+          error: "Corrida não encontrada",
+        });
+        return;
+      }
+
+      res.json(run);
+    } catch (e) {
+      console.error(e);
+
+      res.status(500).json({
+        error: "Internal Server Error",
+      });
+    }
+  },
+
+  async getTelemetriesByRunId(
+  req: Request,
+  res: Response
+): Promise<void> {
+  try {
+    const { id } = req.params as { id: string };
+
+    const telemetries =
+      await TelemetryService.getTelemetriesByRunId(id);
+
+    res.json(telemetries);
+  } catch (e) {
+    console.error(e);
+
+    res.status(500).json({
+      error: "Internal Server Error",
+    });
+  }
+},
 };
