@@ -13,8 +13,8 @@ export const TelemetryController = {
         payload.posicao_y === undefined ||
         payload.bateria_pct === undefined
       ) {
-        res.status(400).json({ 
-          error: "Bad Request: Payload malformado ou campos obrigatórios ausentes." 
+        res.status(400).json({
+          error: "Bad Request: Payload malformado ou campos obrigatórios ausentes."
         });
         return; // Retorna para interromper a execução aqui mesmo
       }
@@ -34,5 +34,17 @@ export const TelemetryController = {
       console.error("❌ Erro no getLatest:", e);
       res.status(500).json({ error: "Internal Server Error" });
     }
-  }
+  },
+
+  async getRuns(req: Request, res: Response): Promise<void> {
+    try {
+      const runs = await TelemetryService.getRuns();
+      res.json(runs);
+    } catch (e) {
+      console.error("❌ Erro ao buscar corridas:", e);
+      res.status(500).json({
+        error: "Internal Server Error",
+      });
+    }
+  },
 };

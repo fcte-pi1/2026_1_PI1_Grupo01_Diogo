@@ -1,16 +1,44 @@
-type Posicao = { x: number; y: number };
+"use client";
 
-type MinimapProps = {
-  tamanho: number;
-  posicoes: Posicao[];
-  posicaoAtual: Posicao;
+type Telemetry = {
+  id: string;
+  posicaoX: number;
+  posicaoY: number;
+  estadoRobo: string;
 };
 
-export function Minimapa({ tamanho, posicoes, posicaoAtual }: MinimapProps) {
+type MinimapaProps = {
+  tamanho: number;
+  telemetries: Telemetry[];
+};
+
+export function Minimapa({
+  tamanho,
+  telemetries,
+}: MinimapaProps) {
+  const posicaoAtual =
+    telemetries.length > 0
+      ? telemetries[telemetries.length - 1]
+      : null;
+
   function classificarCelula(x: number, y: number) {
-    if (posicaoAtual.x === x && posicaoAtual.y === y) return "atual";
-    if (posicoes.some((p) => p.x === x && p.y === y)) return "visitada";
-    return "inexplorada";
+    if (
+      posicaoAtual &&
+      posicaoAtual.posicaoX === x &&
+      posicaoAtual.posicaoY === y
+    ) {
+      return "atual";
+    }
+
+    const visitada = telemetries.some(
+      (t) =>
+        t.posicaoX === x &&
+        t.posicaoY === y
+    );
+
+    return visitada
+      ? "visitada"
+      : "inexplorada";
   }
 
   return (
@@ -23,16 +51,22 @@ export function Minimapa({ tamanho, posicoes, posicaoAtual }: MinimapProps) {
         aspectRatio: "1 / 1",
       }}
     >
-      {Array.from({ length: tamanho * tamanho }).map((_, index) => {
+      {Array.from({
+        length: tamanho * tamanho,
+      }).map((_, index) => {
         const x = index % tamanho;
         const y = Math.floor(index / tamanho);
+
         const tipo = classificarCelula(x, y);
 
         return (
           <div
             key={index}
             style={{
-              backgroundColor: tipo === "visitada" ? "#888" : "black",
+              backgroundColor:
+                tipo === "visitada"
+                  ? "#888"
+                  : "#000",
               border: "1px solid #222",
               position: "relative",
             }}
@@ -40,17 +74,37 @@ export function Minimapa({ tamanho, posicoes, posicaoAtual }: MinimapProps) {
             {tipo === "atual" && (
               <img
                 src="/RatoiconMap.png"
-                alt="rato"
+                alt="Micromouse"
                 style={{
                   width: "100%",
                   height: "100%",
-                  imageRendering: "pixelated",
+                  objectFit: "contain",
+                  imageRendering:
+                    "pixelated",
                   position: "absolute",
-                  top: 0,
-                  left: 0,
+                  inset: 0,
                 }}
               />
             )}
+
+            {tipo === "atual" &&
+              posicaoAtual?.estadoRobo ===
+                "OBJETIVO_ENCONTRADO" && (
+                <div
+                  className="
+                    absolute
+                    inset-0
+                    flex
+                    items-center
+                    justify-center
+                    text-xs
+                    font-bold
+                    text-green-400
+                  "
+                >
+                  🏁
+                </div>
+              )}
           </div>
         );
       })}

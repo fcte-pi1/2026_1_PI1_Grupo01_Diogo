@@ -37,5 +37,13 @@ export const TelemetryService = {
 
   async getLatest() {
     return prisma.telemetry.findFirst({ orderBy: { timestamp: "desc" } });
-  }
+  },
+  
+  async getRuns() {
+  return prisma.run.findMany({
+    orderBy: {
+      startedAt: "desc",
+    },
+  });
+},
 };

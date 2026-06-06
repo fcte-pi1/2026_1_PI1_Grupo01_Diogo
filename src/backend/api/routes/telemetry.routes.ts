@@ -5,3 +5,4 @@ export const telemetryRoutes = Router();
 
 telemetryRoutes.post("/", TelemetryController.create);
 telemetryRoutes.get("/latest", TelemetryController.getLatest);
+telemetryRoutes.get("/runs", TelemetryController.getRuns);
