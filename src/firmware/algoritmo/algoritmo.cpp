@@ -1,13 +1,11 @@
-#include <iostream>
-#include <string>
-#include <vector>
-#include "API.h"
 #include <queue>
-#include <algorithm>
+#include "algoritmo.h"
 
 
-#include <sstream>
-
+extern int distDir, distFre, distEsq;
+extern void moveForwardReal();
+extern void turnRightReal();
+extern void turnLeftReal();
 
 struct area {
     bool visitado = false;
@@ -31,7 +29,6 @@ int minX = 0, maxX = 0;
 int minY = 0, maxY = 0;
 int celulasVisitadasContador = 0;
 
-
 struct Passo {
     int x, y, dirOriginal;
 };
@@ -51,59 +48,63 @@ void Paredes(int x, int y, int direcao) {
     int ox = getoffset(x);
     int oy = getoffset(y);
 
+    bool wallFront = (distFre > 0 && distFre < 150);
+    bool wallRight = (distDir > 0 && distDir < 150);
+    bool wallLeft  = (distEsq > 0 && distEsq < 150);
+
     if (direcao == 0) { 
-        if (API::wallFront()) { 
-            API::setWall(x, y, 'n'); mapGlobal[ox][oy].Norte = true; 
+        if (wallFront) { 
+            mapGlobal[ox][oy].Norte = true; 
             if(oy+1 < 32) mapGlobal[ox][oy+1].Sul = true; 
         }
-        if (API::wallRight()) { 
-            API::setWall(x, y, 'e'); mapGlobal[ox][oy].Leste = true; 
+        if (wallRight) { 
+            mapGlobal[ox][oy].Leste = true; 
             if(ox+1 < 32) mapGlobal[ox+1][oy].Oeste = true; 
         }
-        if (API::wallLeft())  { 
-            API::setWall(x, y, 'w'); mapGlobal[ox][oy].Oeste = true; 
+        if (wallLeft)  { 
+            mapGlobal[ox][oy].Oeste = true; 
             if(ox-1 >= 0) mapGlobal[ox-1][oy].Leste = true; 
         }
     } 
     else if (direcao == 1) { 
-        if (API::wallFront()) { 
-            API::setWall(x, y, 'e'); mapGlobal[ox][oy].Leste = true; 
+        if (wallFront) { 
+            mapGlobal[ox][oy].Leste = true; 
             if(ox+1 < 32) mapGlobal[ox+1][oy].Oeste = true; 
         }
-        if (API::wallRight()) { 
-            API::setWall(x, y, 's'); mapGlobal[ox][oy].Sul = true;   
+        if (wallRight) { 
+            mapGlobal[ox][oy].Sul = true;   
             if(oy-1 >= 0) mapGlobal[ox][oy-1].Norte = true; 
         }
-        if (API::wallLeft())  { 
-            API::setWall(x, y, 'n'); mapGlobal[ox][oy].Norte = true; 
+        if (wallLeft)  { 
+            mapGlobal[ox][oy].Norte = true; 
             if(oy+1 < 32) mapGlobal[ox][oy+1].Sul = true; 
         }
     }
     else if (direcao == 2) { 
-        if (API::wallFront()) { 
-            API::setWall(x, y, 's'); mapGlobal[ox][oy].Sul = true;   
+        if (wallFront) { 
+            mapGlobal[ox][oy].Sul = true;   
             if(oy-1 >= 0) mapGlobal[ox][oy-1].Norte = true; 
         }
-        if (API::wallRight()) { 
-            API::setWall(x, y, 'w'); mapGlobal[ox][oy].Oeste = true; 
+        if (wallRight) { 
+            mapGlobal[ox][oy].Oeste = true; 
             if(ox-1 >= 0) mapGlobal[ox-1][oy].Leste = true; 
         }
-        if (API::wallLeft())  { 
-            API::setWall(x, y, 'e'); mapGlobal[ox][oy].Leste = true; 
+        if (wallLeft)  { 
+            mapGlobal[ox][oy].Leste = true; 
             if(ox+1 < 32) mapGlobal[ox+1][oy].Oeste = true; 
         }
     }
     else if (direcao == 3) { 
-        if (API::wallFront()) { 
-            API::setWall(x, y, 'w'); mapGlobal[ox][oy].Oeste = true; 
+        if (wallFront) { 
+            mapGlobal[ox][oy].Oeste = true; 
             if(ox-1 >= 0) mapGlobal[ox-1][oy].Leste = true; 
         }
-        if (API::wallRight()) { 
-            API::setWall(x, y, 'n'); mapGlobal[ox][oy].Norte = true; 
+        if (wallRight) { 
+            mapGlobal[ox][oy].Norte = true; 
             if(oy+1 < 32) mapGlobal[ox][oy+1].Sul = true; 
         }
-        if (API::wallLeft())  { 
-            API::setWall(x, y, 's'); mapGlobal[ox][oy].Sul = true;   
+        if (wallLeft)  { 
+            mapGlobal[ox][oy].Sul = true;   
             if(oy-1 >= 0) mapGlobal[ox][oy-1].Norte = true; 
         }
     }
@@ -163,7 +164,6 @@ int buscarMelhorCaminho(int x, int y) {
             int yv = y + dy[i];
             if (getoffset(xv) >= 0 && getoffset(xv) < 32 && getoffset(yv) >= 0 && getoffset(yv) < 32) {
                 if (!mapGlobal[getoffset(xv)][getoffset(yv)].visitado){ 
-                    API::setColor(xv,yv,'R');
                     return i;
                 }
                 fila.push({xv, yv, i});
@@ -187,7 +187,6 @@ int buscarMelhorCaminho(int x, int y) {
                
                 if (!paredes[i]) {
                     if (!mapGlobal[getoffset(nx)][getoffset(ny)].visitado){ 
-                        API::setColor(nx,ny,'R'); 
                         return atual.dirOriginal;
                     }
                     explorado[getoffset(nx)][getoffset(ny)] = true;
@@ -197,39 +196,6 @@ int buscarMelhorCaminho(int x, int y) {
         }
     }
     return -1;
-}
-
-void walkMin(){
-    atualizarLimitesMapa(posX, posY);
-    while (true) {
-    mapGlobal[getoffset(posX)][getoffset(posY)].visitado = true;
-    API::setColor(posX, posY, 'G');
-    
-    Paredes(posX, posY, direcao);
-
-    int proxDir = buscarMelhorCaminho(posX, posY);
-    if(estaEmArea2x2(posX, posY)){
-        break;
-    }
-    if (proxDir == -1) break;
-
-    int diff = (proxDir - direcao + 4) % 4;
-    if (diff == 1) API::turnRight();
-
-    else if (diff == 2) {
-         API::turnRight(); 
-         API::turnRight(); 
-    }
-
-    else if (diff == 3) API::turnLeft();
-
-    API::moveForward();
-    direcao = proxDir;
-    if (direcao == 0) posY++;
-    else if (direcao == 1) posX++;
-    else if (direcao == 2) posY--;
-    else if (direcao == 3) posX--;
-    }
 }
 
 int buscarCaminhoParaAlvo(int x, int y, int alvoX, int alvoY) {
@@ -270,16 +236,16 @@ int buscarCaminhoParaAlvo(int x, int y, int alvoX, int alvoY) {
 
 void moverParaDirecao(int proxDir) {
     int diff = (proxDir - direcao + 4) % 4;
-    if (diff == 1) API::turnRight();
+    if (diff == 1) turnRightReal();
 
     else if (diff == 2) { 
-        API::turnRight(); 
-        API::turnRight(); 
+        turnRightReal(); 
+        turnRightReal(); 
     }
 
-    else if (diff == 3) API::turnLeft();
+    else if (diff == 3) turnLeftReal();
 
-    API::moveForward();
+    moveForwardReal();
     direcao = proxDir;
     if (direcao == 0) posY++;
     else if (direcao == 1) posX++;
@@ -289,13 +255,43 @@ void moverParaDirecao(int proxDir) {
     atualizarLimitesMapa(posX, posY);
 }
 
+void walkMin(){
+    atualizarLimitesMapa(posX, posY);
+    while (true) {
+    mapGlobal[getoffset(posX)][getoffset(posY)].visitado = true;
+    
+    Paredes(posX, posY, direcao);
+
+    int proxDir = buscarMelhorCaminho(posX, posY);
+    if(estaEmArea2x2(posX, posY)){
+        break;
+    }
+    if (proxDir == -1) break;
+
+    int diff = (proxDir - direcao + 4) % 4;
+    if (diff == 1) turnRightReal();
+
+    else if (diff == 2) {
+         turnRightReal(); 
+         turnRightReal(); 
+    }
+
+    else if (diff == 3) turnLeftReal();
+
+    moveForwardReal();
+    direcao = proxDir;
+    if (direcao == 0) posY++;
+    else if (direcao == 1) posX++;
+    else if (direcao == 2) posY--;
+    else if (direcao == 3) posX--;
+    }
+}
 
 void walkMax(){
     atualizarLimitesMapa(posX, posY);
     chegou = false;
     while (true) {
         mapGlobal[getoffset(posX)][getoffset(posY)].visitado = true;
-        API::setColor(posX, posY, 'B');
         
         if(!achouCentro && estaEmArea2x2(posX, posY)) {
             centroX = posX;
@@ -321,6 +317,5 @@ void walkMax(){
             if (proxDir == -1) break;
             moverParaDirecao(proxDir);
         }
-        API::setColor(posX, posY, 'G');
     }
 }
