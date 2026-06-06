@@ -1,9 +1,11 @@
 #include <queue>
-#include <algorithm>
+#include "algoritmo.h"
 
 
-#include <sstream>
-
+extern int distDir, distFre, distEsq;
+extern void moveForwardReal();
+extern void turnRightReal();
+extern void turnLeftReal();
 
 struct area {
     bool visitado = false;
