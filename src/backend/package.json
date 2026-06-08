@@ -1,11 +1,13 @@
 {
   "name": "backend",
   "version": "1.0.0",
-  "description": "Esta pasta deverá armazenar arquivos referentes a:",
+  "description": "Backend do Micromouse MrBombastic",
   "main": "index.js",
   "scripts": {
     "dev": "tsx watch api/server.ts",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "jest --runInBand",
+    "test:coverage": "jest --runInBand --coverage",
+    "test:ci": "jest --runInBand --coverage --ci"
   },
   "keywords": [],
   "author": "",
@@ -19,11 +21,39 @@
   "devDependencies": {
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
-    "@types/node": "^25.9.1",
+    "@types/jest": "^29.5.14",
+    "@types/node": "^20.0.0",
+    "@types/supertest": "^6.0.2",
     "better-sqlite3": "^12.10.0",
+    "jest": "^29.7.0",
     "prisma": "^5.22.0",
+    "supertest": "^7.1.0",
+    "ts-jest": "^29.3.4",
     "ts-node": "^10.9.2",
     "tsx": "^4.22.3",
-    "typescript": "^6.0.3"
+    "typescript": "^5.8.3"
+  },
+  "jest": {
+    "preset": "ts-jest",
+    "testEnvironment": "node",
+    "roots": ["<rootDir>/api/__tests__"],
+    "testMatch": ["**/*.test.ts"],
+    "collectCoverageFrom": [
+      "api/**/*.ts",
+      "!api/server.ts",
+      "!api/**/*.d.ts"
+    ],
+    "coverageThreshold": {
+      "global": {
+        "lines": 80,
+        "functions": 80,
+        "branches": 70,
+        "statements": 80
+      }
+    },
+    "coverageReporters": ["text", "lcov", "html"],
+    "moduleNameMapper": {
+      "@prisma/client": "<rootDir>/api/__tests__/__mocks__/prisma.mock.ts"
+    }
   }
 }
