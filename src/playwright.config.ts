@@ -1,0 +1,13 @@
+import { defineConfig } from '@playwright/test';
+
+export default defineConfig({
+  use: {
+    baseURL: 'http://localhost:3001',
+  },
+
+  webServer: {
+    command: 'cd frontend && npm run dev',
+    url: 'http://localhost:3001',
+    reuseExistingServer: true,
+  },
+});
