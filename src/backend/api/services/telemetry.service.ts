@@ -13,7 +13,7 @@ export const TelemetryService = {
     if (!runExists) {
       await prisma.run.create({ data: { id: runId } });
     }
-    
+
     // Extraímos o objeto de sensores com uma proteção (fallback) caso venha vazio
     const sensores = data.leitura_sensores || {};
 
@@ -26,7 +26,7 @@ export const TelemetryService = {
         direcaoAtual: String(data.direcao_atual || "NORTE"),
         estadoRobo: String(data.estado_robo || "EXPLORANDO"),
         bateriaPct: Math.floor(Number(data.bateria_pct)),
-        
+
         // Mapeando as distâncias dos sensores
         distFrenteCm: Number(sensores.dist_frente_cm || 0),
         distEsquerdaCm: Number(sensores.dist_esquerda_cm || 0),
@@ -37,5 +37,30 @@ export const TelemetryService = {
 
   async getLatest() {
     return prisma.telemetry.findFirst({ orderBy: { timestamp: "desc" } });
-  }
+  },
+
+  async getRuns() {
+    return prisma.run.findMany({
+      orderBy: {
+        startedAt: "desc",
+      },
+    });
+  },
+
+  async getRunById(id: string) {
+    return prisma.run.findUnique({
+      where: { id },
+    });
+  },
+
+  async getTelemetriesByRunId(runId: string) {
+    return prisma.telemetry.findMany({
+      where: {
+        runId,
+      },
+      orderBy: {
+        tempoCorridaMs: "asc",
+      },
+    });
+  },
 };

@@ -1,21 +1,70 @@
 import { TelemetriaPanel } from "@/components/runs/telemetria-panel";
 import { Minimapa } from "@/components/runs/minimap";
-import { mockTelemetria, mockPosicoes } from "@/lib/MockFakeData";
 
 type Props = {
-  params: { id: string };
+  params: Promise<{
+    id: string;
+  }>;
 };
-export default async function CorridaHistoricaPage({ params }: Props) {
-  // Rikas - Futuramente: const corrida = await fetch(`/api/corridas/${params.id}`)
+
+export default async function CorridaHistoricaPage({
+  params,
+}: Props) {
   const { id } = await params;
-  const corrida = mockTelemetria;
-  const ultimaPosicao = mockPosicoes[mockPosicoes.length - 1];
+
+  const [runResponse, telemetriesResponse] =
+    await Promise.all([
+      fetch(
+        `http://localhost:3000/api/telemetria/runs/${id}`,
+        {
+          cache: "no-store",
+        }
+      ),
+      fetch(
+        `http://localhost:3000/api/telemetria/runs/${id}/telemetries`,
+        {
+          cache: "no-store",
+        }
+      ),
+    ]);
+
+  if (!runResponse.ok) {
+    throw new Error("Erro ao buscar corrida");
+  }
+
+  if (!telemetriesResponse.ok) {
+    throw new Error("Erro ao buscar telemetrias");
+  }
+
+  const corrida = await runResponse.json();
+  const telemetrias = await telemetriesResponse.json();
+
+  if (!telemetrias.length) {
+    return (
+      <div>
+        <h1 className="text-2xl font-bold">
+          Corrida #{id}
+        </h1>
+
+        <p className="text-muted-foreground">
+          Nenhuma telemetria encontrada para esta corrida.
+        </p>
+      </div>
+    );
+  }
+
+  const ultimaTelemetria =
+    telemetrias[telemetrias.length - 1];
+
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-2xl font-bold">Corrida #{id}</h1>
+        <h1 className="text-2xl font-bold">
+          Corrida #{corrida.id}
+        </h1>
+
         <p className="text-sm text-muted-foreground">
-          Visualização histórica — somente leitura
+          Status: {corrida.status}
         </p>
       </div>
 
@@ -23,13 +72,14 @@ export default async function CorridaHistoricaPage({ params }: Props) {
         <div>
           <Minimapa
             tamanho={16}
-            posicoes={mockPosicoes}
-            posicaoAtual={ultimaPosicao}
+            telemetries={telemetrias}
           />
         </div>
 
         <div className="flex flex-col gap-6">
-          <TelemetriaPanel telemetria={corrida} />
+          <TelemetriaPanel
+            telemetria={ultimaTelemetria}
+          />
         </div>
       </div>
     </div>
