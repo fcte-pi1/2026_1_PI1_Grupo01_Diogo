@@ -32,7 +32,8 @@ O firmware deve enviar e a API Web deve validar estritamente a estrutura e os ti
     "dist_frente_cm": 12.5,
     "dist_esquerda_cm": 4.1,
     "dist_direita_cm": 15.0
-  }
+  } // <-- Faltava fechar essa chave
+}   // <-- E faltava fechar a chave principal
 ```
 ## Dicionário de Dados e Tipagem
 
