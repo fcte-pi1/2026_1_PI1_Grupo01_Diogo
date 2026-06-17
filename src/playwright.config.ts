@@ -1,6 +1,8 @@
 import { defineConfig } from '@playwright/test';
 
 export default defineConfig({
+  testDir: './frontend/e2e/tests',
+
   use: {
     baseURL: 'http://localhost:3001',
   },
@@ -10,4 +12,9 @@ export default defineConfig({
     url: 'http://localhost:3001',
     reuseExistingServer: true,
   },
+
+  testIgnore: [
+    '**/backend/**',
+    '**/__tests__/**',
+  ],
 });
