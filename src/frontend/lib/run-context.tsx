@@ -5,9 +5,10 @@ import {
   useContext,
   useState,
   useEffect,
-  useRef,
   ReactNode,
 } from "react";
+
+const API_BASE = "http://localhost:3000/api/telemetria";
 
 export type Telemetria = {
   id: string;
@@ -31,6 +32,7 @@ export type Telemetria = {
 };
 
 type CorridaContextType = {
+  // Indica se a tela está acompanhando (observando) a corrida ao vivo.
   corridaEmAndamento: boolean;
   setCorridaEmAndamento: (v: boolean) => void;
 
@@ -61,103 +63,74 @@ export function CorridaProvider({
   const [runIdAtual, setRunIdAtual] =
     useState<string | null>(null);
 
-  const runIgnorada =
-    useRef<string | null>(null);
-
+  // O robô é quem salva a corrida (POSTa telemetria continuamente). A web
+  // apenas OBSERVA: ao acompanhar, descobre qual corrida está recebendo dados
+  // e desenha a trajetória completa dela.
   useEffect(() => {
-    let intervalo: NodeJS.Timeout;
-
-    if (corridaEmAndamento) {
-      fetch(
-        "http://localhost:3000/api/telemetria/latest"
-      )
-        .then((res) => res.json())
-        .then((data) => {
-          runIgnorada.current =
-            data.runId || null;
-
-          setTelemetria(null);
-          setTelemetries([]);
-          setRunIdAtual(null);
-        })
-        .catch(() => {
-          setTelemetria(null);
-          setTelemetries([]);
-          setRunIdAtual(null);
-        });
-
-      console.log(
-        "Corrida iniciada! Aguardando novas telemetrias..."
-      );
-
-      intervalo = setInterval(async () => {
-        try {
-          const res = await fetch(
-            "http://localhost:3000/api/telemetria/latest"
-          );
-
-          if (!res.ok) return;
-
-          const data: Telemetria =
-            await res.json();
-
-          if (
-            runIgnorada.current &&
-            data.runId ===
-              runIgnorada.current
-          ) {
-            return;
-          }
-
-          setTelemetria(data);
-
-          setRunIdAtual(data.runId);
-
-          setTelemetries((anterior) => {
-            const existe =
-              anterior.some(
-                (t) => t.id === data.id
-              );
-
-            if (existe) {
-              return anterior;
-            }
-
-            return [
-              ...anterior,
-              data,
-            ];
-          });
-        } catch (error) {
-          console.error(
-            "Erro ao buscar telemetria:",
-            error
-          );
-        }
-      }, 500);
-    } else {
-      runIgnorada.current = null;
-
-      setTelemetria(null);
-      setTelemetries([]);
-      setRunIdAtual(null);
+    if (!corridaEmAndamento) {
+      // Para o polling, mas mantém o último caminho na tela para revisão.
+      return;
     }
 
-    return () => {
-      if (intervalo) {
-        clearInterval(intervalo);
+    // Começa a observação a partir de um estado limpo.
+    setTelemetria(null);
+    setTelemetries([]);
+    setRunIdAtual(null);
+
+    // Corrida na qual travamos a observação. Começa nula: só passa a desenhar
+    // quando o robô abre uma corrida ATIVA (EM_ANDAMENTO). Isso evita exibir a
+    // última corrida já finalizada ao clicar em "Iniciar Gravação".
+    let runAtivoId: string | null = null;
+
+    const intervalo = setInterval(async () => {
+      try {
+        // Enquanto não travou numa corrida, procura a corrida ativa atual.
+        if (!runAtivoId) {
+          const resRuns = await fetch(`${API_BASE}/runs`);
+          if (!resRuns.ok) return;
+
+          const runs: { id: string; status: string }[] =
+            await resRuns.json();
+
+          const ativa = Array.isArray(runs)
+            ? runs.find((r) => r.status === "EM_ANDAMENTO")
+            : undefined;
+
+          if (!ativa) return; // nenhuma corrida em andamento ainda
+
+          runAtivoId = ativa.id;
+          setRunIdAtual(ativa.id);
+        }
+
+        // Busca a trajetória completa da corrida travada (ordenada, sem perdas).
+        // Continua puxando mesmo após o robô finalizá-la, para capturar o
+        // último ponto (ex.: OBJETIVO_ENCONTRADO).
+        const resTels = await fetch(
+          `${API_BASE}/runs/${runAtivoId}/telemetries`
+        );
+        if (!resTels.ok) return;
+
+        const dados: Telemetria[] = await resTels.json();
+        if (!Array.isArray(dados) || dados.length === 0) return;
+
+        setTelemetries(dados);
+        setTelemetria(dados[dados.length - 1]);
+      } catch (error) {
+        console.error("Erro ao buscar telemetria:", error);
       }
-    };
+    }, 500);
+
+    return () => clearInterval(intervalo);
   }, [corridaEmAndamento]);
 
   return (
     <CorridaContext.Provider
       value={{
+        corridaEmAndamento,
+        setCorridaEmAndamento,
         telemetria,
         telemetries,
         runIdAtual,
-        corridaEmAndamento,
-        setCorridaEmAndamento,
       }}
     >
       {children}

@@ -90,4 +90,23 @@ export const TelemetryController = {
     });
   }
 },
+
+  // Remove uma corrida e suas telemetrias.
+  async deleteRun(req: Request, res: Response): Promise<void> {
+    try {
+      const { id } = req.params as { id: string };
+
+      const run = await TelemetryService.getRunById(id);
+      if (!run) {
+        res.status(404).json({ error: "Corrida não encontrada" });
+        return;
+      }
+
+      await TelemetryService.deleteRun(id);
+      res.status(204).send();
+    } catch (e) {
+      console.error("❌ Erro ao deletar corrida:", e);
+      res.status(500).json({ error: "Internal Server Error" });
+    }
+  },
 };

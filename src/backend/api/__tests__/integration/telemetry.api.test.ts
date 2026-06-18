@@ -14,6 +14,8 @@ jest.mock("../../services/telemetry.service", () => ({
   TelemetryService: {
     save: jest.fn(),
     getLatest: jest.fn(),
+    deleteRun: jest.fn(),
+    getRunById: jest.fn(),
   },
 }));
 
@@ -24,6 +26,11 @@ import { TelemetryService } from "../../services/telemetry.service";
 const app = express();
 app.use(cors(), express.json());
 app.use("/api/telemetria", telemetryRoutes);
+
+// Zera as contagens de chamadas entre os testes para evitar contaminação de estado.
+beforeEach(() => {
+  jest.clearAllMocks();
+});
 
 // Payload completo conforme contrato
 const payloadCompleto = {
@@ -206,5 +213,34 @@ describe("GET /api/telemetria/latest", () => {
 
     expect(res.status).toBe(500);
     expect(res.body).toHaveProperty("error");
+  });
+});
+
+// ============================================================
+const corridaAtiva = {
+  id: "corrida-1",
+  status: "EM_ANDAMENTO",
+  startedAt: "2026-06-07T09:59:00.000Z",
+  endedAt: null,
+};
+
+describe("DELETE /api/telemetria/runs/:id", () => {
+  it("deve deletar a corrida existente e retornar 204", async () => {
+    (TelemetryService.getRunById as jest.Mock).mockResolvedValue(corridaAtiva);
+    (TelemetryService.deleteRun as jest.Mock).mockResolvedValue(corridaAtiva);
+
+    const res = await request(app).delete("/api/telemetria/runs/corrida-1");
+
+    expect(res.status).toBe(204);
+    expect(TelemetryService.deleteRun).toHaveBeenCalledWith("corrida-1");
+  });
+
+  it("deve retornar 404 ao tentar deletar corrida inexistente", async () => {
+    (TelemetryService.getRunById as jest.Mock).mockResolvedValue(null);
+
+    const res = await request(app).delete("/api/telemetria/runs/xpto");
+
+    expect(res.status).toBe(404);
+    expect(TelemetryService.deleteRun).not.toHaveBeenCalled();
   });
 });

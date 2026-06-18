@@ -38,7 +38,12 @@ Diretório da API e servidor do projeto do Micromouse.
 - `prisma/`: Esquema do banco de dados (`schema.prisma`) e arquivo local `dev.db`.
 
 > [!TIP]
-> Para testar o envio de dados em tempo real sem o robô físico, utilize o script de simulação localizado na raiz do projeto em `/mocks/mock-robo.js`.
+> Para testar o envio de dados em tempo real sem o robô físico, utilize o script de simulação em `/mocks/teste_stress_api.js`:
+> ```bash
+> node mocks/teste_stress_api.js              # ~tempo real (300ms entre envios)
+> INTERVALO_MS=1 node mocks/teste_stress_api.js   # rajada (teste de estresse)
+> ```
+> Fluxo de demonstração: na web clique em **Iniciar Gravação**, rode o script acima e veja o caminho ser construído no minimapa; o robô encerra a corrida sozinho ao enviar `OBJETIVO_ENCONTRADO`.
 
 > [!WARNING]
 > Código de interface, componentes visuais e regras de negócio do cliente devem ficar exclusivamente na pasta `src/frontend`.
