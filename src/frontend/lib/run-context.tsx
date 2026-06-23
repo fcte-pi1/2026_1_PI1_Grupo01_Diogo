@@ -10,6 +10,11 @@ import {
 
 const API_BASE = "http://localhost:3000/api/telemetria";
 
+// A telemetria ao vivo é lida por polling HTTP. Mantemos a frequência baixa e
+// evitamos buscas/renders desnecessários para isso não virar um gargalo de
+// desempenho (menos requisições por ciclo e atualização só quando há ponto novo).
+const INTERVALO_POLLING_MS = 1000;
+
 export type Telemetria = {
   id: string;
   runId: string;
@@ -82,9 +87,14 @@ export function CorridaProvider({
     // última corrida já finalizada ao clicar em "Iniciar Gravação".
     let runAtivoId: string | null = null;
 
+    // Quantidade de pontos já exibidos; usado para evitar re-render quando a
+    // trajetória não cresceu (corrida parada/finalizada) — ver nota no topo.
+    let ultimoTamanho = 0;
+
     const intervalo = setInterval(async () => {
       try {
         // Enquanto não travou numa corrida, procura a corrida ativa atual.
+        // (Após travar, deixamos de bater em /runs — uma busca a menos por ciclo.)
         if (!runAtivoId) {
           const resRuns = await fetch(`${API_BASE}/runs`);
           if (!resRuns.ok) return;
@@ -113,12 +123,16 @@ export function CorridaProvider({
         const dados: Telemetria[] = await resTels.json();
         if (!Array.isArray(dados) || dados.length === 0) return;
 
+        // Nada novo: não atualiza o estado (evita re-renderizar o minimapa à toa).
+        if (dados.length === ultimoTamanho) return;
+        ultimoTamanho = dados.length;
+
         setTelemetries(dados);
         setTelemetria(dados[dados.length - 1]);
       } catch (error) {
         console.error("Erro ao buscar telemetria:", error);
       }
-    }, 500);
+    }, INTERVALO_POLLING_MS);
 
     return () => clearInterval(intervalo);
   }, [corridaEmAndamento]);
