@@ -1,45 +1,103 @@
 #include <Arduino.h>
+
+// --- Dependências de Hardware e Módulos ---
+#include "config/pinos.h"
 #include "sensores/i2c_bus.h"
+#include "sensores/encoders.h"
 #include "sensores/imu.h"
 #include "sensores/tof.h"
 #include "atuadores/motores.h"
-#include "config/pinos.h"
 
-void setup() {
-    Serial.begin(115200);
-    delay(500);
-    Serial.println("\n=== Micromouse — Teste de Sensores (Issue #71) ===");
+// --- Máquina de Estados Finitos (FSM) ---
+enum EstadoRobo {
+    PENSANDO,
+    ANDANDO_RETO,
+    VIRANDO_EIXO,
+    FIM_DE_PISTA
+};
 
-    i2cInit();
-    i2cScan();
+EstadoRobo estadoAtual = PENSANDO; 
 
-    if (!imuInit()) {
-        Serial.println("[SETUP] Falha no IMU — verifique o hardware e reinicie");
-    }
+// --- API de Movimentação ---
 
-    if (!tofInit()) {
-        Serial.println("[SETUP] Falha nos ToF — verifique o hardware e reinicie");
-    }
-
-    if (!motoresInit()) {
-        Serial.println("[SETUP] Falha ao inicializar motores — verifique o TB6612FNG");
-    }
-    motoresParar();
-
-    Serial.println("[SETUP] Iniciando leitura contínua...\n");
+// Aplica PWM igual em ambos os motores (Base para futura integração do PID)
+void andarParaFrente(int velocidade) {
+    motorSetVelocidade(0, velocidade);
+    motorSetVelocidade(1, velocidade);
 }
 
+// Rotação diferencial (Tank Turn) para zerar o raio de curva
+void girarNoEixo(int velocidade) {
+    motorSetVelocidade(0, -velocidade); 
+    motorSetVelocidade(1, velocidade);
+}
+
+// Zera as velocidades alvo e aciona a rampa de desaceleração
+void pararTudo() {
+    motoresParar(); 
+}
+
+// --- Inicialização do Sistema ---
+void setup() {
+    Serial.begin(115200);
+    Serial.println("[Init] Boot do sistema iniciado.");
+
+    // Configuração de barramento e interrupções de hardware (Odometria)
+    i2cInit(); 
+    encodersInit();
+
+    // Calibra o offset do giroscópio
+    imuCalibrarOffsetZ(int amostras = 400);
+
+    // Inicialização de sensores I2C (IMU MPU6050 e ToF VL53L0X)
+    imuInit();
+    tofInit();
+
+    // Configuração dos geradores de PWM e driver TB6612FNG
+    motoresInit();
+
+    // Estabilização de transientes elétricos antes do loop de controle
+    delay(1000);
+    Serial.println("[Init] FSM pronta para execução.");
+}
+
+// --- Loop Principal (Controle e Navegação) ---
 void loop() {
+    // Atualização da rampa de PWM (Execução não-bloqueante obrigatória)
     motoresAtualizar();
+    imuAtualizar();
 
-    float giroZ = imuLerGiroZ();
+    // Controle de transição da FSM
+    switch (estadoAtual) {
+        
+        case PENSANDO:
+            // Algoritmo Flood Fill: Leitura de mapa e decisão de rota.
+           
+            break;
 
-    Serial.printf("Z=%+6.1f dps | ToF:", giroZ);
-    for (int i = 0; i < NUM_TOF; i++) {
-        uint16_t d = tofLerDistancia(i);
-        Serial.printf(" %4u", d);
+        case ANDANDO_RETO:
+            andarParaFrente(150);
+
+            // Condição de parada: Odometria atingiu 1 célula (ex: 500 pulsos) 
+            // OU sistema anti-colisão detectou obstáculo a < 50mm.
+            if (encoderLerEsquerdo() >= 500 || tofLerDistancia(0) < 50) {
+                pararTudo(); 
+                estadoAtual = PENSANDO; 
+            }
+            break;
+
+        case VIRANDO_EIXO:
+            girarNoEixo(150);
+
+           if (abs(imuLerAnguloZ()) >= 90.0f) { 
+                pararTudo(); 
+                estadoAtual = PENSANDO; 
+            }
+            break;
+
+        case FIM_DE_PISTA:
+            pararTudo();
+            // Objetivo alcançado (Centro do labirinto). Retém o robô em idle.
+            break;
     }
-    Serial.println(" mm");
-
-    delay(200);
 }

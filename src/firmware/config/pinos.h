@@ -30,3 +30,11 @@ constexpr uint8_t TOF_ADDRESSES[NUM_TOF]  = { 0x30, 0x31, 0x32 };
 #define MOTOR_PWMB_PIN  27
 
 #define MOTOR_STBY_PIN  33
+
+// --- Encoders ---
+// ⚠️ Atenção: Pinos de interrupção precisam suportar INPUT_PULLUP interno.
+// Evite os pinos 34 a 39, pois eles não possuem resistor de pull-up interno.
+// Ajuste esses números para bater com o esquemático/solda real do robô!
+#define ENCODER_ESQ_PIN  14
+#define ENCODER_DIR_PIN  15
+#define NUM_MOTORES       2 // Adicionado para garantir a compilação do motores.cpp

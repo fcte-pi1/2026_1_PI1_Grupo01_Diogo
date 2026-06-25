@@ -40,3 +40,29 @@ void imuCalibrarOffsetZ(int amostras) {
     offsetGiroZ = (float)(soma / amostras);
     Serial.printf("[IMU] Offset Z calibrado: %.4f °/s\n", offsetGiroZ);
 }
+
+
+// --- Funções de Navegação e Odometria Angular ---
+
+// Deve ser chamada continuamente dentro do loop() principal
+void imuAtualizar() {
+    unsigned long tempoAtual = millis();
+    float dt = (tempoAtual - tempoAnteriorIMU) / 1000.0f; // Converte delta T para segundos
+    tempoAnteriorIMU = tempoAtual;
+
+    float velAngularZ = imuLerGiroZ();
+
+    // Integração numérica (Velocidade x Tempo)
+    anguloAcumuladoZ += (velAngularZ * dt);
+}
+
+// Retorna a posição em graus desde o último reset
+float imuLerAnguloZ() {
+    return anguloAcumuladoZ;
+}
+
+// Necessário na transição de FSM antes de iniciar um Tank Turn
+void imuZerarAnguloZ() {
+    anguloAcumuladoZ = 0.0f;
+    tempoAnteriorIMU = millis(); // Sincroniza o relógio
+}
