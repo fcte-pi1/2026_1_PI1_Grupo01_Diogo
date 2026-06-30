@@ -1,5 +1,7 @@
 "use client";
 
+import { useMemo } from "react";
+
 type Telemetry = {
   id: string;
   posicaoX: number;
@@ -21,6 +23,18 @@ export function Minimapa({
       ? telemetries[telemetries.length - 1]
       : null;
 
+  // Pré-computa as células visitadas uma vez por atualização (Set de "x,y").
+  // Antes, cada célula do grid varria toda a lista de telemetrias (.some),
+  // dando O(células × telemetrias) por render. Com o Set, a checagem é O(1),
+  // baixando o custo total para O(células + telemetrias).
+  const visitadas = useMemo(() => {
+    const conjunto = new Set<string>();
+    for (const t of telemetries) {
+      conjunto.add(`${t.posicaoX},${t.posicaoY}`);
+    }
+    return conjunto;
+  }, [telemetries]);
+
   function classificarCelula(x: number, y: number) {
     if (
       posicaoAtual &&
@@ -30,13 +44,7 @@ export function Minimapa({
       return "atual";
     }
 
-    const visitada = telemetries.some(
-      (t) =>
-        t.posicaoX === x &&
-        t.posicaoY === y
-    );
-
-    return visitada
+    return visitadas.has(`${x},${y}`)
       ? "visitada"
       : "inexplorada";
   }

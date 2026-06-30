@@ -1,6 +1,9 @@
 const GRID_SIZE = 8;
-const INTERVALO_MS = 1;
-const DURACAO_SEGUNDOS = 90;
+// Intervalo entre envios. Default de 300ms simula o robô em "tempo real",
+// deixando o caminho ser construído visivelmente no minimapa.
+// Para teste de estresse (rajada), rode: INTERVALO_MS=1 node mocks/teste_stress_api.js
+const INTERVALO_MS = Number(process.env.INTERVALO_MS ?? 300);
+const DURACAO_SEGUNDOS = Number(process.env.PASSOS ?? 60);
 
 let tempoCorrida = 0;
 
@@ -63,9 +66,12 @@ async function enviarTelemetria(estadoRobo = "EXPLORANDO") {
     estado_robo: estadoRobo,
     bateria_pct: bateria,
 
-    dist_frente_cm: +(Math.random() * 30).toFixed(2),
-    dist_esquerda_cm: +(Math.random() * 30).toFixed(2),
-    dist_direita_cm: +(Math.random() * 30).toFixed(2),
+    // Sensores aninhados conforme o contrato da API (contrato_API.md)
+    leitura_sensores: {
+      dist_frente_cm: +(Math.random() * 30).toFixed(2),
+      dist_esquerda_cm: +(Math.random() * 30).toFixed(2),
+      dist_direita_cm: +(Math.random() * 30).toFixed(2),
+    },
   };
 
   try {

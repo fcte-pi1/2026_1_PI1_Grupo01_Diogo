@@ -187,3 +187,70 @@ describe("TelemetryController.getLatest()", () => {
     );
   });
 });
+
+// ============================================================
+// Exclusão de corrida (usada pela tabela de histórico)
+// ============================================================
+
+const mockDeleteRun = TelemetryService.deleteRun as jest.Mock;
+const mockGetRunById = TelemetryService.getRunById as jest.Mock;
+
+// Helpers que também expõem params e o método .send (usado no 204)
+const criarReqComParams = (params: object): Partial<Request> => ({
+  params: params as any,
+});
+
+const criarResComSend = (): Partial<Response> => {
+  const res: Partial<Response> = {};
+  res.status = jest.fn().mockReturnValue(res);
+  res.json = jest.fn().mockReturnValue(res);
+  res.send = jest.fn().mockReturnValue(res);
+  return res;
+};
+
+const corridaAtiva = {
+  id: "corrida-1",
+  status: "EM_ANDAMENTO",
+  startedAt: "2026-06-07T09:59:00.000Z",
+  endedAt: null,
+};
+
+describe("TelemetryController.deleteRun()", () => {
+  it("deve retornar 204 quando a corrida existe e é deletada", async () => {
+    mockGetRunById.mockResolvedValue(corridaAtiva);
+    mockDeleteRun.mockResolvedValue(corridaAtiva);
+
+    const req = criarReqComParams({ id: "corrida-1" });
+    const res = criarResComSend();
+
+    await TelemetryController.deleteRun(req as Request, res as Response);
+
+    expect(mockDeleteRun).toHaveBeenCalledWith("corrida-1");
+    expect(res.status).toHaveBeenCalledWith(204);
+    expect(res.send).toHaveBeenCalled();
+  });
+
+  it("deve retornar 404 quando a corrida não existe", async () => {
+    mockGetRunById.mockResolvedValue(null);
+
+    const req = criarReqComParams({ id: "inexistente" });
+    const res = criarResComSend();
+
+    await TelemetryController.deleteRun(req as Request, res as Response);
+
+    expect(res.status).toHaveBeenCalledWith(404);
+    expect(mockDeleteRun).not.toHaveBeenCalled();
+  });
+
+  it("deve retornar 500 quando o serviço falha", async () => {
+    mockGetRunById.mockResolvedValue(corridaAtiva);
+    mockDeleteRun.mockRejectedValue(new Error("DB offline"));
+
+    const req = criarReqComParams({ id: "corrida-1" });
+    const res = criarResComSend();
+
+    await TelemetryController.deleteRun(req as Request, res as Response);
+
+    expect(res.status).toHaveBeenCalledWith(500);
+  });
+});

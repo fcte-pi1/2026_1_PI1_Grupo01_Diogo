@@ -24,12 +24,8 @@ export type TelemetriaUI = {
 
   direcaoAtual: string;
 
-  estadoRobo:
-    | "PARADO"
-    | "EXPLORANDO"
-    | "VOLTANDO"
-    | "ERRO"
-    | "CONCLUIDO";
+  // String livre: o backend pode enviar estados fora da união (ex.: OBJETIVO_ENCONTRADO).
+  estadoRobo: string;
 
   bateriaPct: number;
 

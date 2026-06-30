@@ -59,3 +59,42 @@ O firmware deve enviar e a API Web deve validar estritamente a estrutura e os ti
 400 Bad Request: Payload malformado, campos obrigatórios ausentes ou violação dos tipos/restrições definidos acima.
 
 500 Internal Server Error: Erro inesperado no processamento por parte do servidor.
+
+---
+
+## Ciclo de Vida da Corrida (Run)
+
+Cada corrida (`Run`) agrupa as telemetrias de uma execução. **Quem salva e
+encerra a corrida é o robô**; a interface web apenas **visualiza** os dados.
+
+| Quem | Quando                                    | Efeito                                                                       |
+| ---- | ----------------------------------------- | --------------------------------------------------------------------------- |
+| Robô | Primeiro POST de telemetria               | A corrida é criada/identificada automaticamente (ver regra de agrupamento). |
+| Robô | Envia telemetria com `estado_robo` final  | A corrida é finalizada automaticamente (ver tabela de estados).            |
+| Web  | Telas de "Histórico" e "Acompanhar"       | Apenas lê os dados via API (não cria nem finaliza corridas).               |
+
+### Regra de agrupamento da telemetria
+- Se o payload trouxer `runId`, a telemetria é gravada nessa corrida (criada se não existir).
+- Sem `runId`, é anexada à corrida `EM_ANDAMENTO` mais recente; se não houver nenhuma, uma nova é criada para não perder o dado.
+
+### Estados da corrida (`status`)
+- `EM_ANDAMENTO` — corrida aberta, recebendo telemetria.
+- `CONCLUIDA` — o robô completou o objetivo.
+- `NAO_CONCLUIDA` — encerrada pelo robô sem completar (erro).
+
+### `estado_robo` que encerram a corrida
+| `estado_robo`          | `status` resultante |
+| ---------------------- | ------------------- |
+| `OBJETIVO_ENCONTRADO`  | `CONCLUIDA`         |
+| `CONCLUIDO`            | `CONCLUIDA`         |
+| `ERRO`                 | `NAO_CONCLUIDA`     |
+
+### Endpoints de corrida (consumidos pela web)
+
+| Método   | Rota                                    | Descrição                                            |
+| -------- | --------------------------------------- | ---------------------------------------------------- |
+| `GET`    | `/api/telemetria/latest`                | Última telemetria recebida (descobre a corrida ativa). |
+| `GET`    | `/api/telemetria/runs`                  | Lista as corridas (mais recentes primeiro).         |
+| `GET`    | `/api/telemetria/runs/:id`              | Detalhes de uma corrida. → `404` se não existir.     |
+| `GET`    | `/api/telemetria/runs/:id/telemetries`  | Telemetrias da corrida (ordenadas por tempo).        |
+| `DELETE` | `/api/telemetria/runs/:id`              | Remove a corrida e suas telemetrias. → `204` / `404`. |

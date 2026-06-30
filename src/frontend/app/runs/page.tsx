@@ -55,12 +55,8 @@ export default function RunsPage() {
 
         <ControlesPanel
           corridaEmAndamento={corridaEmAndamento}
-          onIniciar={() => {
-            setCorridaEmAndamento(true);
-          }}
-          onParar={() => {
-            setCorridaEmAndamento(false);
-          }}
+          onIniciar={() => setCorridaEmAndamento(true)}
+          onParar={() => setCorridaEmAndamento(false)}
         />
       </div>
     </div>

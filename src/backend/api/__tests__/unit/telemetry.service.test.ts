@@ -25,10 +25,18 @@ const payloadValido = {
   },
 };
 
+// Corrida ativa (EM_ANDAMENTO) usada como destino padrão da telemetria.
+const corridaAtiva = {
+  id: "corrida-ativa-1",
+  status: "EM_ANDAMENTO",
+  startedAt: new Date("2026-06-07T09:59:00.000Z"),
+  endedAt: null,
+};
+
 // Registro que o Prisma devolveria após um create bem-sucedido
 const registroCriado = {
   id: "uuid-telemetria-1",
-  runId: "corrida-padrao",
+  runId: "corrida-ativa-1",
   tempoCorridaMs: 15400,
   posicaoX: 3,
   posicaoY: 4,
@@ -44,36 +52,34 @@ const registroCriado = {
 // ============================================================
 describe("TelemetryService.save()", () => {
   // ----------------------------------------------------------
-  it("deve criar uma nova corrida quando o runId não existe no banco", async () => {
-    // Simula: corrida não encontrada → precisa criar
-    prismaMock.run.findUnique.mockResolvedValue(null);
-    prismaMock.run.create.mockResolvedValue({ id: "corrida-padrao" });
+  it("deve anexar a telemetria à corrida ativa (EM_ANDAMENTO) quando nenhum runId é enviado", async () => {
+    prismaMock.run.findFirst.mockResolvedValue(corridaAtiva);
     prismaMock.telemetry.create.mockResolvedValue(registroCriado);
 
     const resultado = await TelemetryService.save(payloadValido);
 
-    expect(prismaMock.run.findUnique).toHaveBeenCalledWith({
-      where: { id: "corrida-padrao" },
+    expect(prismaMock.run.findFirst).toHaveBeenCalledWith({
+      where: { status: "EM_ANDAMENTO" },
+      orderBy: { startedAt: "desc" },
     });
-    expect(prismaMock.run.create).toHaveBeenCalledWith({
-      data: { id: "corrida-padrao" },
-    });
+    // Não deve criar corrida nova quando já existe uma ativa
+    expect(prismaMock.run.create).not.toHaveBeenCalled();
     expect(resultado).toEqual(registroCriado);
   });
 
   // ----------------------------------------------------------
-  it("não deve criar corrida duplicada quando ela já existe", async () => {
-    // Simula: corrida encontrada → não cria de novo
-    prismaMock.run.findUnique.mockResolvedValue({ id: "corrida-padrao" });
+  it("deve criar uma nova corrida quando não há corrida ativa e nenhum runId é enviado", async () => {
+    prismaMock.run.findFirst.mockResolvedValue(null);
+    prismaMock.run.create.mockResolvedValue({ id: "corrida-auto-1" });
     prismaMock.telemetry.create.mockResolvedValue(registroCriado);
 
     await TelemetryService.save(payloadValido);
 
-    expect(prismaMock.run.create).not.toHaveBeenCalled();
+    expect(prismaMock.run.create).toHaveBeenCalledWith({ data: {} });
   });
 
   // ----------------------------------------------------------
-  it("deve usar o runId customizado enviado pelo robô quando fornecido", async () => {
+  it("deve usar o runId customizado enviado pelo robô e criá-lo se ainda não existir", async () => {
     const payloadComRunId = { ...payloadValido, runId: "corrida-123" };
     prismaMock.run.findUnique.mockResolvedValue(null);
     prismaMock.run.create.mockResolvedValue({ id: "corrida-123" });
@@ -87,19 +93,35 @@ describe("TelemetryService.save()", () => {
     expect(prismaMock.run.findUnique).toHaveBeenCalledWith({
       where: { id: "corrida-123" },
     });
+    expect(prismaMock.run.create).toHaveBeenCalledWith({
+      data: { id: "corrida-123" },
+    });
+    // Com runId explícito não deve consultar a corrida ativa
+    expect(prismaMock.run.findFirst).not.toHaveBeenCalled();
     expect(resultado.runId).toBe("corrida-123");
   });
 
   // ----------------------------------------------------------
+  it("não deve criar corrida duplicada quando o runId enviado já existe", async () => {
+    const payloadComRunId = { ...payloadValido, runId: "corrida-123" };
+    prismaMock.run.findUnique.mockResolvedValue({ id: "corrida-123" });
+    prismaMock.telemetry.create.mockResolvedValue(registroCriado);
+
+    await TelemetryService.save(payloadComRunId);
+
+    expect(prismaMock.run.create).not.toHaveBeenCalled();
+  });
+
+  // ----------------------------------------------------------
   it("deve mapear corretamente todos os campos do payload para o banco", async () => {
-    prismaMock.run.findUnique.mockResolvedValue({ id: "corrida-padrao" });
+    prismaMock.run.findFirst.mockResolvedValue(corridaAtiva);
     prismaMock.telemetry.create.mockResolvedValue(registroCriado);
 
     await TelemetryService.save(payloadValido);
 
     expect(prismaMock.telemetry.create).toHaveBeenCalledWith({
       data: expect.objectContaining({
-        runId: "corrida-padrao",
+        runId: "corrida-ativa-1",
         tempoCorridaMs: 15400,
         posicaoX: 3,
         posicaoY: 4,
@@ -114,11 +136,41 @@ describe("TelemetryService.save()", () => {
   });
 
   // ----------------------------------------------------------
-  it("deve usar valores padrão quando leitura_sensores não for enviada", async () => {
-    const payloadSemSensores = { ...payloadValido };
-    delete (payloadSemSensores as any).leitura_sensores;
+  it("deve aceitar sensores no nível raiz do payload (compatível com o mock do robô)", async () => {
+    const payloadSensoresFlat = {
+      tempo_corrida_ms: 1000,
+      posicao_x: 1,
+      posicao_y: 1,
+      direcao_atual: "LESTE",
+      estado_robo: "EXPLORANDO",
+      bateria_pct: 90,
+      dist_frente_cm: 7.7,
+      dist_esquerda_cm: 8.8,
+      dist_direita_cm: 9.9,
+    };
+    prismaMock.run.findFirst.mockResolvedValue(corridaAtiva);
+    prismaMock.telemetry.create.mockResolvedValue(registroCriado);
 
-    prismaMock.run.findUnique.mockResolvedValue({ id: "corrida-padrao" });
+    await TelemetryService.save(payloadSensoresFlat);
+
+    expect(prismaMock.telemetry.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        distFrenteCm: 7.7,
+        distEsquerdaCm: 8.8,
+        distDireitaCm: 9.9,
+      }),
+    });
+  });
+
+  // ----------------------------------------------------------
+  it("deve usar 0 como padrão quando nenhum sensor é enviado", async () => {
+    const payloadSemSensores = {
+      tempo_corrida_ms: 1000,
+      posicao_x: 1,
+      posicao_y: 1,
+      bateria_pct: 90,
+    };
+    prismaMock.run.findFirst.mockResolvedValue(corridaAtiva);
     prismaMock.telemetry.create.mockResolvedValue(registroCriado);
 
     await TelemetryService.save(payloadSemSensores);
@@ -140,7 +192,7 @@ describe("TelemetryService.save()", () => {
       posicao_x: 3.7,
       posicao_y: 4.2,
     };
-    prismaMock.run.findUnique.mockResolvedValue({ id: "corrida-padrao" });
+    prismaMock.run.findFirst.mockResolvedValue(corridaAtiva);
     prismaMock.telemetry.create.mockResolvedValue(registroCriado);
 
     await TelemetryService.save(payloadComFloat);
@@ -155,11 +207,69 @@ describe("TelemetryService.save()", () => {
   });
 
   // ----------------------------------------------------------
+  it("deve finalizar a corrida como CONCLUIDA quando o robô envia OBJETIVO_ENCONTRADO", async () => {
+    prismaMock.run.findFirst.mockResolvedValue(corridaAtiva);
+    prismaMock.telemetry.create.mockResolvedValue(registroCriado);
+
+    await TelemetryService.save({
+      ...payloadValido,
+      estado_robo: "OBJETIVO_ENCONTRADO",
+    });
+
+    expect(prismaMock.run.updateMany).toHaveBeenCalledWith({
+      where: { id: "corrida-ativa-1", status: "EM_ANDAMENTO" },
+      data: expect.objectContaining({
+        status: "CONCLUIDA",
+        endedAt: expect.any(Date),
+      }),
+    });
+  });
+
+  // ----------------------------------------------------------
+  it("deve finalizar a corrida como NAO_CONCLUIDA quando o robô envia ERRO", async () => {
+    prismaMock.run.findFirst.mockResolvedValue(corridaAtiva);
+    prismaMock.telemetry.create.mockResolvedValue(registroCriado);
+
+    await TelemetryService.save({ ...payloadValido, estado_robo: "ERRO" });
+
+    expect(prismaMock.run.updateMany).toHaveBeenCalledWith({
+      where: { id: "corrida-ativa-1", status: "EM_ANDAMENTO" },
+      data: expect.objectContaining({ status: "NAO_CONCLUIDA" }),
+    });
+  });
+
+  // ----------------------------------------------------------
+  it("não deve finalizar a corrida em estado não terminal (EXPLORANDO)", async () => {
+    prismaMock.run.findFirst.mockResolvedValue(corridaAtiva);
+    prismaMock.telemetry.create.mockResolvedValue(registroCriado);
+
+    await TelemetryService.save({ ...payloadValido, estado_robo: "EXPLORANDO" });
+
+    expect(prismaMock.run.updateMany).not.toHaveBeenCalled();
+  });
+
+  // ----------------------------------------------------------
   it("deve propagar erro do Prisma quando o banco falha no create", async () => {
-    prismaMock.run.findUnique.mockResolvedValue({ id: "corrida-padrao" });
+    prismaMock.run.findFirst.mockResolvedValue(corridaAtiva);
     prismaMock.telemetry.create.mockRejectedValue(new Error("DB offline"));
 
-    await expect(TelemetryService.save(payloadValido)).rejects.toThrow("DB offline");
+    await expect(TelemetryService.save(payloadValido)).rejects.toThrow(
+      "DB offline"
+    );
+  });
+});
+
+// ============================================================
+describe("TelemetryService.deleteRun()", () => {
+  // ----------------------------------------------------------
+  it("deve deletar a corrida pelo id", async () => {
+    prismaMock.run.delete.mockResolvedValue(corridaAtiva);
+
+    await TelemetryService.deleteRun("corrida-ativa-1");
+
+    expect(prismaMock.run.delete).toHaveBeenCalledWith({
+      where: { id: "corrida-ativa-1" },
+    });
   });
 });
 
