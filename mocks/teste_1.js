@@ -7,50 +7,102 @@ const ROTA = [
     x: 0,
     y: 0,
     direcao: "LESTE",
-    sensores: { frente: 30, esquerda: 0, direita: 0 },
+    sensores: { frente: 88, esquerda: 5, direita: 88 },
   },
   {
     x: 1,
     y: 0,
     direcao: "LESTE",
-    sensores: { frente: 20, esquerda: 0, direita: 0 },
+    sensores: { frente: 58, esquerda: 5, direita: 28 },
   },
   {
     x: 2,
     y: 0,
     direcao: "LESTE",
-    sensores: { frente: 5, esquerda: 0, direita: 20 },
+    sensores: { frente: 28, esquerda: 5, direita: 58 },
   },
   {
-    x: 2,
+    x: 3,
+    y: 0,
+    direcao: "LESTE",
+    sensores: { frente: 5, esquerda: 5, direita: 88 },
+  },
+  {
+    x: 3,
     y: 1,
     direcao: "SUL",
-    sensores: { frente: 20, esquerda: 5, direita: 5 },
+    sensores: { frente: 58, esquerda: 5, direita: 28 },
   },
   {
-    x: 1,
-    y: 1,
+    x: 3,
+    y: 2,
+    direcao: "SUL",
+    sensores: { frente: 28, esquerda: 5, direita: 58 },
+  },
+  {
+    x: 3,
+    y: 3,
+    direcao: "SUL",
+    sensores: { frente: 5, esquerda: 5, direita: 88 },
+  },
+  {
+    x: 2,
+    y: 3,
     direcao: "OESTE",
-    sensores: { frente: 5, esquerda: 20, direita: 5 },
+    sensores: { frente: 28, esquerda: 5, direita: 58 },
   },
   {
     x: 1,
+    y: 3,
+    direcao: "OESTE",
+    sensores: { frente: 58, esquerda: 5, direita: 28 },
+  },
+  {
+    x: 0,
+    y: 3,
+    direcao: "OESTE",
+    sensores: { frente: 5, esquerda: 5, direita: 88 },
+  },
+  {
+    x: 0,
     y: 2,
-    direcao: "SUL",
-    sensores: { frente: 20, esquerda: 5, direita: 5 },
+    direcao: "NORTE",
+    sensores: { frente: 28, esquerda: 58, direita: 5 },
+  },
+  {
+    x: 0,
+    y: 1,
+    direcao: "NORTE",
+    sensores: { frente: 58, esquerda: 28, direita: 5 },
+  },
+  {
+    x: 1,
+    y: 1,
+    direcao: "LESTE",
+    sensores: { frente: 28, esquerda: 28, direita: 28 },
+  },
+  {
+    x: 2,
+    y: 1,
+    direcao: "LESTE",
+    sensores: { frente: 5, esquerda: 58, direita: 28 },
   },
   {
     x: 2,
     y: 2,
-    direcao: "LESTE",
-    sensores: { frente: 0, esquerda: 0, direita: 0 },
+    direcao: "SUL",
+    sensores: { frente: 5, esquerda: 28, direita: 58 },
+  },
+  {
+    x: 1,
+    y: 2,
+    direcao: "OESTE",
+    sensores: { frente: 5, esquerda: 58, direita: 28 },
   },
 ];
-
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
-
 async function enviarTelemetria(indice, estadoRobo = "EXPLORANDO") {
   const ponto = ROTA[indice];
 
@@ -59,8 +111,11 @@ async function enviarTelemetria(indice, estadoRobo = "EXPLORANDO") {
     100 - Math.floor((indice / (ROTA.length - 1)) * 10),
   );
 
+  const tempoAtual = tempoCorrida;
+  tempoCorrida += INTERVALO_MS;
+
   const payload = {
-    tempo_corrida_ms: tempoCorrida,
+    tempo_corrida_ms: tempoAtual,
     posicao_x: ponto.x,
     posicao_y: ponto.y,
     direcao_atual: ponto.direcao,
@@ -75,7 +130,7 @@ async function enviarTelemetria(indice, estadoRobo = "EXPLORANDO") {
   };
 
   try {
-    const response = await fetch("http://localhost:3000/api/telemetria", {
+    await fetch("http://localhost:3000/api/telemetria", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -83,35 +138,30 @@ async function enviarTelemetria(indice, estadoRobo = "EXPLORANDO") {
       body: JSON.stringify(payload),
     });
 
-    const data = await response.json();
-
     console.log(
-      `[${(tempoCorrida / 1000).toFixed(1)}s]`,
+      `[${(tempoAtual / 1000).toFixed(1)}s]`,
       `[${estadoRobo}]`,
       `(${ponto.x}, ${ponto.y})`,
-      data.id ?? "OK",
     );
   } catch (error) {
     console.error("Erro ao enviar:", error);
   }
-
-  tempoCorrida += INTERVALO_MS;
 }
 
 async function iniciarSimulacao() {
   console.log("🚀 Iniciando corrida 4x4");
 
-  for (let i = 0; i < ROTA.length - 1; i++) {
-    await enviarTelemetria(i, "EXPLORANDO");
-    await sleep(INTERVALO_MS);
+  for (let i = 0; i < ROTA.length; i++) {
+    const estado = i === ROTA.length - 1 ? "OBJETIVO_ENCONTRADO" : "EXPLORANDO";
+
+    enviarTelemetria(i, estado);
+
+    if (i < ROTA.length - 1) {
+      await sleep(INTERVALO_MS);
+    }
   }
 
-  await enviarTelemetria(ROTA.length - 1, "OBJETIVO_ENCONTRADO");
-
-  console.log("");
-  console.log("🏁 Objetivo encontrado!");
-  console.log("📍 Centro: (2,2)");
+  console.log("\n🏁 Objetivo encontrado!");
   console.log(`⏱️ Tempo total: ${(tempoCorrida / 1000).toFixed(1)}s`);
 }
-
 iniciarSimulacao();
