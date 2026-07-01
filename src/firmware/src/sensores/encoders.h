@@ -11,3 +11,7 @@ int32_t encoderLerDireito();
 
 // Zera os contadores (necessário antes de iniciar novos movimentos no PID)
 void encodersZerar();
+
+// Retorna a distância percorrida em centímetros
+float encoderDistanciaEsquerdaCm();
+float encoderDistanciaDireitaCm();

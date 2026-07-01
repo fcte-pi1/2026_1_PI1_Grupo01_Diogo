@@ -6,17 +6,15 @@
 static VL53L0X sensores[NUM_TOF];
 
 bool tofInit() {
-    // 1. Colocar todos os XSHUT em saída e em LOW → todos os sensores em shutdown
     for (int i = 0; i < NUM_TOF; i++) {
         pinMode(TOF_XSHUT_PINS[i], OUTPUT);
         digitalWrite(TOF_XSHUT_PINS[i], LOW);
     }
     delay(10);
 
-    // 2. Acordar cada sensor individualmente e reatribuir endereço único
     for (int i = 0; i < NUM_TOF; i++) {
-        digitalWrite(TOF_XSHUT_PINS[i], HIGH);  // acorda apenas este sensor (ainda em 0x29)
-        delay(10);
+        digitalWrite(TOF_XSHUT_PINS[i], HIGH);  
+        delay(15);
 
         sensores[i].setTimeout(500);
         if (!sensores[i].init()) {
@@ -38,5 +36,17 @@ bool tofInit() {
 
 uint16_t tofLerDistancia(int i) {
     if (i < 0 || i >= NUM_TOF) return UINT16_MAX;
-    return sensores[i].readRangeContinuousMillimeters();
+    
+    uint16_t distanciaBruta = sensores[i].readRangeContinuousMillimeters();
+
+    if (i == 2) {
+        if (distanciaBruta > 2000) return distanciaBruta;
+        
+        // Se o sensor lê de 95 a 300mm, nós convertemos essa escala para 45 a 250mm
+        if (distanciaBruta >= 95 && distanciaBruta <= 300) {
+            return map(distanciaBruta, 95, 300, 45, 250);
+        }
+    }
+
+    return distanciaBruta;
 }

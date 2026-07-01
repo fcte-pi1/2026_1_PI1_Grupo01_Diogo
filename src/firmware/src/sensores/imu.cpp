@@ -6,6 +6,8 @@
 
 static Adafruit_MPU6050 mpu;
 static float offsetGiroZ = 0.0f;
+static float anguloAcumuladoZ = 0.0f;
+static unsigned long tempoAnteriorIMU = 0;
 
 bool imuInit() {
     if (!mpu.begin(MPU6050_ADDR)) {
@@ -16,7 +18,7 @@ bool imuInit() {
     mpu.setGyroRange(MPU6050_RANGE_250_DEG);
     mpu.setAccelerometerRange(MPU6050_RANGE_2_G);
     mpu.setFilterBandwidth(MPU6050_BAND_21_HZ);
-
+    tempoAnteriorIMU = millis();
     Serial.println("[IMU] MPU6050 inicializado (±250°/s, ±2g, filtro 21Hz)");
     return true;
 }
@@ -43,26 +45,23 @@ void imuCalibrarOffsetZ(int amostras) {
 
 
 // --- Funções de Navegação e Odometria Angular ---
-
-// Deve ser chamada continuamente dentro do loop() principal
 void imuAtualizar() {
     unsigned long tempoAtual = millis();
-    float dt = (tempoAtual - tempoAnteriorIMU) / 1000.0f; // Converte delta T para segundos
+    float dt = (tempoAtual - tempoAnteriorIMU) / 1000.0f;
     tempoAnteriorIMU = tempoAtual;
+
+    if (dt > 0.2f || dt <= 0.0f) return;
 
     float velAngularZ = imuLerGiroZ();
 
-    // Integração numérica (Velocidade x Tempo)
     anguloAcumuladoZ += (velAngularZ * dt);
 }
 
-// Retorna a posição em graus desde o último reset
 float imuLerAnguloZ() {
     return anguloAcumuladoZ;
 }
 
-// Necessário na transição de FSM antes de iniciar um Tank Turn
 void imuZerarAnguloZ() {
     anguloAcumuladoZ = 0.0f;
-    tempoAnteriorIMU = millis(); // Sincroniza o relógio
+    tempoAnteriorIMU = millis(); 
 }
