@@ -4,93 +4,125 @@
 #include "sensores/tof.h"
 #include "sensores/imu.h"
 #include "atuadores/motores.h"
+#include "navegacao/navegacao.h"
+#include "navegacao/flood_fill.h"
 
-unsigned long ultimoControleMs = 0;
-unsigned long tempoInicioMovimento = 0;
-constexpr uint16_t INTERVALO_CONTROLE_MS = 20; 
+// =============================================================================
+// MICROMOUSE — Navegação por FLOOD FILL com movimento controlado por PID.
+//
+// Sistema de coordenadas:
+//   - Origem (0,0) no canto inferior-esquerdo.
+//   - Robô começa em (0,0) olhando para o NORTE.
+//   - x cresce para LESTE, y cresce para o NORTE.
+//
+// Fluxo por célula:
+//   1. lê paredes (frente/esq/dir) e registra no mapa;
+//   2. recalcula o flood fill;
+//   3. se chegou ao objetivo, para;
+//   4. escolhe o vizinho de menor distância e vai até ele.
+// =============================================================================
 
-// Parâmetros de Controle e Segurança
-constexpr int16_t VELOCIDADE_BASE = 90; 
-constexpr float KP = 4.5f;               
-constexpr unsigned long TEMPO_MAXIMO_MOVIMENTO = 5000; // 5 segundos em milissegundos
+FloodFill labirinto;
+
+// Estado do robô no mapa.
+uint8_t  robX = 0;
+uint8_t  robY = 0;
+Direcao  robDir = NORTE;
+
+bool concluido = false;
+
+// Converte direção relativa (frente/esq/dir) do robô em direção absoluta.
+static inline Direcao dirFrente(Direcao h)  { return h; }
+static inline Direcao dirDireita(Direcao h) { return (Direcao)((h + 1) & 3); }
+static inline Direcao dirEsquerda(Direcao h){ return (Direcao)((h + 3) & 3); }
+
+// Move a posição lógica uma célula na direção dada.
+static void avancarPosicao(Direcao d) {
+    switch (d) {
+        case NORTE: robY++; break;
+        case LESTE: robX++; break;
+        case SUL:   robY--; break;
+        case OESTE: robX--; break;
+    }
+}
+
+// Lê os sensores e grava as paredes vistas na célula atual.
+static void registrarParedes() {
+    if (navParedeFrente())   labirinto.definirParede(robX, robY, dirFrente(robDir),  true);
+    if (navParedeDireita())  labirinto.definirParede(robX, robY, dirDireita(robDir), true);
+    if (navParedeEsquerda()) labirinto.definirParede(robX, robY, dirEsquerda(robDir),true);
+}
+
+// Gira o robô (física + estado lógico) para a direção absoluta desejada.
+static void orientarPara(Direcao destino) {
+    uint8_t diff = (destino - robDir) & 3;
+    switch (diff) {
+        case 0: /* já está de frente */          break;
+        case 1: navGirarDireita();               break;
+        case 2: navGirarMeiaVolta();             break;
+        case 3: navGirarEsquerda();              break;
+    }
+    robDir = destino;
+}
 
 void setup() {
     Serial.begin(115200);
-    Serial.println("\n=== INICIALIZANDO MICROMOUSE ===");
+    Serial.println("\n=== MICROMOUSE FLOOD FILL ===");
 
     i2cInit();
 
-    if (!imuInit()) { Serial.println("[MAIN] ERRO: IMU."); while(true); }
-    imuCalibrarOffsetZ(250); 
+    if (!imuInit())     { Serial.println("[MAIN] ERRO: IMU.");    while (true); }
+    imuCalibrarOffsetZ(250);
     imuZerarAnguloZ();
 
-    if (!tofInit()) { Serial.println("[MAIN] ERRO: ToF."); while(true); }
-    if (!motoresInit()) { Serial.println("[MAIN] ERRO: Motores."); while(true); }
+    if (!tofInit())     { Serial.println("[MAIN] ERRO: ToF.");    while (true); }
+    if (!motoresInit()) { Serial.println("[MAIN] ERRO: Motores.");while (true); }
+    if (!navInit())     { Serial.println("[MAIN] ERRO: Nav.");    while (true); }
 
-    Serial.println("=== SISTEMA PRONTO: COLOQUE O ROBÔ NO CHÃO ===");
-    delay(2000); 
-    tempoInicioMovimento = millis(); // Inicia o cronômetro de segurança
+    labirinto.iniciar();              // paredes zeradas + moldura + objetivo central
+    navZerarRumo();
+
+    Serial.println("=== PRONTO: coloque o robô em (0,0) olhando p/ NORTE ===");
+    delay(2000);
 }
 
-// Variável global para acumular o erro (adicione no topo do arquivo se necessário)
-static float somaErros = 0.0f; 
-
 void loop() {
-    imuAtualizar();     
-    motoresAtualizar(); 
-
-    unsigned long agora = millis();
-    if (agora - ultimoControleMs >= INTERVALO_CONTROLE_MS) {
-        ultimoControleMs = agora;
-
-        // 1. Segurança por Tempo (5s)
-        if (agora - tempoInicioMovimento >= TEMPO_MAXIMO_MOVIMENTO) {
-            motoresParar();
-            Serial.println("[PARADA] Tempo limite de 5s atingido.");
-            while(true) { motoresAtualizar(); delay(10); }
-        }
-
-        // 2. Segurança Frontal (Filtrando o erro 8191)
-        uint16_t distFrente = tofLerDistancia(1); 
-        // Só aceita a leitura se for um valor real menor que 8000mm
-        if (distFrente <= 150 && distFrente > 0) {
-            motoresParar();
-            Serial.printf("\n[FREIO] Parede vista a %dmm. Motores travados!\n", distFrente);
-            while(true) { motoresAtualizar(); delay(10); }
-        }
-
-        // 3. Controle PI (Proporcional + Integral) de Linha Reta
-        float anguloAtual = imuLerAnguloZ();
-        float erro = anguloAtual - 0.0f; 
-
-        // Acumula o erro ao longo do tempo (Integração)
-        somaErros += erro;
-
-        // Limitador da Integral (Anti-windup) para o motor não enlouquecer
-        if (somaErros > 100.0f) somaErros = 100.0f;
-        if (somaErros < -100.0f) somaErros = -100.0f;
-        
-        // Ganhos do Controle
-        constexpr float KP_CORRIGIDO = 1.2f; 
-        constexpr float KI_CORRIGIDO = 0.15f; // O "I" vai acumulando força contra o cabo
-
-        // Fórmula do PI
-        int16_t correcao = (int16_t)((erro * KP_CORRIGIDO) + (somaErros * KI_CORRIGIDO));
-
-        int16_t velEsquerda = VELOCIDADE_BASE + correcao;
-        int16_t velDireita  = VELOCIDADE_BASE - correcao;
-
-        // Garante que o PWM não estoure os limites de 0 a 255
-        if(velEsquerda > 255) velEsquerda = 255;
-        if(velEsquerda < 0)   velEsquerda = 0;
-        if(velDireita > 255)  velDireita = 255;
-        if(velDireita < 0)    velDireita = 0;
-
-        motorSetVelocidade(MOTOR_ESQUERDO, velEsquerda);
-        motorSetVelocidade(MOTOR_DIREITO, velDireita);
-
-        // Telemetria para análise
-        Serial.printf("Ang:%.2f | Integral:%.1f | ToF:%dmm | Esq:%d | Dir:%d\n", 
-                      anguloAtual, somaErros, distFrente, velEsquerda, velDireita);
+    if (concluido) {
+        navParar();
+        motoresAtualizar();
+        delay(50);
+        return;
     }
+
+    // 1. Mapeia o que o robô enxerga na célula atual.
+    registrarParedes();
+
+    // 2. Recalcula distâncias até o objetivo.
+    labirinto.calcular();
+
+    Serial.printf("[POS] (%u,%u) rumo=%u  dist=%u\n",
+                  robX, robY, robDir, labirinto.distancia(robX, robY));
+
+    // 3. Chegou ao centro?
+    if (labirinto.ehObjetivo(robX, robY)) {
+        Serial.println("=== OBJETIVO ALCANCADO! ===");
+        labirinto.imprimirSerial();
+        navParar();
+        concluido = true;
+        return;
+    }
+
+    // 4. Decide o próximo passo pelo flood fill.
+    Direcao proxima;
+    if (!labirinto.melhorDirecao(robX, robY, robDir, proxima)) {
+        Serial.println("[MAIN] Preso: nenhuma direção válida.");
+        navParar();
+        concluido = true;
+        return;
+    }
+
+    // 5. Orienta e avança uma célula.
+    orientarPara(proxima);
+    navAndarUmaCelula();
+    avancarPosicao(proxima);
 }

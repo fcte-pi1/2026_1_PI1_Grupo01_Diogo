@@ -37,6 +37,12 @@ MotorEstado estados[NUM_MOTORES] = {
 bool driverHabilitado = false;
 uint32_t ultimoPassoRampaMs = 0;
 
+// --- Estado do modo cruzeiro+correcao ---
+bool    modoCruzeiro   = false;   // false = modo legado por-motor
+int16_t cruzeiroAlvo   = 0;       // base desejada (rampeada)
+int16_t cruzeiroAtual  = 0;       // base atual (após rampa)
+int16_t correcaoAtual  = 0;       // diferencial imediato (não rampeado)
+
 int16_t limitarVelocidade(int16_t velocidade) {
     if (velocidade > PWM_MAX) return PWM_MAX;
     if (velocidade < -PWM_MAX) return -PWM_MAX;
@@ -120,6 +126,11 @@ bool motoresInit() {
         aplicarSaida((MotorId)i, 0);
     }
 
+    modoCruzeiro  = false;
+    cruzeiroAlvo  = 0;
+    cruzeiroAtual = 0;
+    correcaoAtual = 0;
+
     motoresHabilitar(true);
     Serial.println("[Motores] TB6612FNG inicializado (PWM 20kHz, 8 bits)");
     return true;
@@ -127,6 +138,28 @@ bool motoresInit() {
 
 void motoresAtualizar() {
     const uint32_t agora = millis();
+
+    if (modoCruzeiro) {
+        // A RAMPA atua SÓ na base (cruzeiro), a cada RAMPA_INTERVALO_MS.
+        if (agora - ultimoPassoRampaMs >= RAMPA_INTERVALO_MS) {
+            ultimoPassoRampaMs = agora;
+            cruzeiroAtual = aproximar(cruzeiroAtual, cruzeiroAlvo);
+        }
+
+        // A CORRECAO é imediata (não passa pela rampa): aplicada todo ciclo.
+        const int16_t vEsq = limitarVelocidade(cruzeiroAtual - correcaoAtual);
+        const int16_t vDir = limitarVelocidade(cruzeiroAtual + correcaoAtual);
+
+        // Espelha para leitura (motorLerVelocidadeAtual continua válido).
+        estados[MOTOR_ESQUERDO].velocidadeAtual = vEsq;
+        estados[MOTOR_DIREITO].velocidadeAtual  = vDir;
+
+        aplicarSaida(MOTOR_ESQUERDO, vEsq);
+        aplicarSaida(MOTOR_DIREITO,  vDir);
+        return;
+    }
+
+    // --- Modo legado por-motor (comportamento original, inalterado) ---
     if (agora - ultimoPassoRampaMs < RAMPA_INTERVALO_MS) return;
     ultimoPassoRampaMs = agora;
 
@@ -146,11 +179,15 @@ void motoresHabilitar(bool habilitar) {
             estados[i].velocidadeAtual = 0;
             aplicarSaida((MotorId)i, 0);
         }
+        cruzeiroAtual = 0;
+        correcaoAtual = 0;
     }
 }
 
+// ----- Modo legado por-motor -----
 void motorSetVelocidade(MotorId motor, int16_t velocidade) {
     if (!motorValido(motor)) return;
+    modoCruzeiro = false;                         // sai do modo cruzeiro
     estados[motor].velocidadeAlvo = limitarVelocidade(velocidade);
 }
 
@@ -170,9 +207,23 @@ void motorParar(MotorId motor) {
     motorSetVelocidade(motor, 0);
 }
 
+// ----- Modo cruzeiro+correcao -----
+void motoresSetCruzeiro(int16_t base) {
+    modoCruzeiro = true;
+    cruzeiroAlvo = limitarVelocidade(base);
+}
+
+void motoresSetCorrecao(int16_t correcao) {
+    modoCruzeiro = true;
+    correcaoAtual = correcao;
+}
+
+// ----- Comum aos dois modos -----
 void motoresParar() {
+    cruzeiroAlvo  = 0;
+    correcaoAtual = 0;
     for (uint8_t i = 0; i < NUM_MOTORES; i++) {
-        motorParar((MotorId)i);
+        estados[i].velocidadeAlvo = 0;
     }
 }
 
