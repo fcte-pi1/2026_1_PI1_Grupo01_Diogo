@@ -303,3 +303,110 @@ describe("TelemetryService.getLatest()", () => {
     await expect(TelemetryService.getLatest()).rejects.toThrow("Timeout");
   });
 });
+
+// ============================================================
+describe("TelemetryService.getRuns()", () => {
+  const listaDeCorridas = [
+    { id: "corrida-2", status: "EM_ANDAMENTO", startedAt: new Date("2026-06-08T09:00:00.000Z") },
+    { id: "corrida-1", status: "CONCLUIDA", startedAt: new Date("2026-06-07T09:59:00.000Z") },
+  ];
+
+  // ----------------------------------------------------------
+  it("deve retornar todas as corridas ordenadas da mais recente para a mais antiga", async () => {
+    prismaMock.run.findMany.mockResolvedValue(listaDeCorridas);
+
+    const resultado = await TelemetryService.getRuns();
+
+    expect(prismaMock.run.findMany).toHaveBeenCalledWith({
+      orderBy: { startedAt: "desc" },
+    });
+    expect(resultado).toEqual(listaDeCorridas);
+  });
+
+  // ----------------------------------------------------------
+  it("deve retornar array vazio quando não há corridas cadastradas", async () => {
+    prismaMock.run.findMany.mockResolvedValue([]);
+
+    const resultado = await TelemetryService.getRuns();
+
+    expect(resultado).toEqual([]);
+  });
+
+  // ----------------------------------------------------------
+  it("deve propagar erro do Prisma quando o banco falha na consulta", async () => {
+    prismaMock.run.findMany.mockRejectedValue(new Error("DB offline"));
+
+    await expect(TelemetryService.getRuns()).rejects.toThrow("DB offline");
+  });
+});
+
+// ============================================================
+describe("TelemetryService.getRunById()", () => {
+  // ----------------------------------------------------------
+  it("deve retornar a corrida quando o id existe", async () => {
+    const corrida = { id: "corrida-1", status: "CONCLUIDA" };
+    prismaMock.run.findUnique.mockResolvedValue(corrida);
+
+    const resultado = await TelemetryService.getRunById("corrida-1");
+
+    expect(prismaMock.run.findUnique).toHaveBeenCalledWith({
+      where: { id: "corrida-1" },
+    });
+    expect(resultado).toEqual(corrida);
+  });
+
+  // ----------------------------------------------------------
+  it("deve retornar null quando o id não existe", async () => {
+    prismaMock.run.findUnique.mockResolvedValue(null);
+
+    const resultado = await TelemetryService.getRunById("inexistente");
+
+    expect(resultado).toBeNull();
+  });
+
+  // ----------------------------------------------------------
+  it("deve propagar erro do Prisma quando o banco falha na consulta", async () => {
+    prismaMock.run.findUnique.mockRejectedValue(new Error("Timeout"));
+
+    await expect(TelemetryService.getRunById("corrida-1")).rejects.toThrow("Timeout");
+  });
+});
+
+// ============================================================
+describe("TelemetryService.getTelemetriesByRunId()", () => {
+  const telemetriasDaCorrida = [
+    { id: "tel-1", runId: "corrida-1", tempoCorridaMs: 100 },
+    { id: "tel-2", runId: "corrida-1", tempoCorridaMs: 200 },
+  ];
+
+  // ----------------------------------------------------------
+  it("deve retornar as telemetrias da corrida ordenadas por tempo de corrida crescente", async () => {
+    prismaMock.telemetry.findMany.mockResolvedValue(telemetriasDaCorrida);
+
+    const resultado = await TelemetryService.getTelemetriesByRunId("corrida-1");
+
+    expect(prismaMock.telemetry.findMany).toHaveBeenCalledWith({
+      where: { runId: "corrida-1" },
+      orderBy: { tempoCorridaMs: "asc" },
+    });
+    expect(resultado).toEqual(telemetriasDaCorrida);
+  });
+
+  // ----------------------------------------------------------
+  it("deve retornar array vazio quando a corrida não possui telemetrias", async () => {
+    prismaMock.telemetry.findMany.mockResolvedValue([]);
+
+    const resultado = await TelemetryService.getTelemetriesByRunId("corrida-sem-dados");
+
+    expect(resultado).toEqual([]);
+  });
+
+  // ----------------------------------------------------------
+  it("deve propagar erro do Prisma quando o banco falha na consulta", async () => {
+    prismaMock.telemetry.findMany.mockRejectedValue(new Error("DB offline"));
+
+    await expect(
+      TelemetryService.getTelemetriesByRunId("corrida-1")
+    ).rejects.toThrow("DB offline");
+  });
+});
