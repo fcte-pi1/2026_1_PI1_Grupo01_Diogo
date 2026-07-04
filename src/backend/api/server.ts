@@ -4,6 +4,7 @@ import { createServer } from "http";
 import { WebSocket, WebSocketServer } from "ws";
 import { telemetryRoutes } from "./routes/telemetry.routes";
 import { TelemetryService } from "./services/telemetry.service";
+import { parseMensagem, envelope } from "./ws/protocol";
 
 const app = express();
 
@@ -13,17 +14,38 @@ app.use("/api/telemetria", telemetryRoutes);
 const server = createServer(app);
 const wss = new WebSocketServer({ server, path: "/ws" });
 
+// Envia uma mensagem a todos os clientes conectados.
+function broadcast(data: string) {
+  wss.clients.forEach((client) => {
+    if (client.readyState === WebSocket.OPEN) {
+      client.send(data);
+    }
+  });
+}
+
 wss.on("connection", (socket) => {
   socket.on("message", async (message) => {
     try {
-      const payload = JSON.parse(message.toString());
-      const result = await TelemetryService.save(payload);
+      // Aceita envelope { type, payload } ou objeto cru (tratado como telemetria).
+      const { type, payload } = parseMensagem(message.toString());
 
-      wss.clients.forEach((client) => {
-        if (client.readyState === WebSocket.OPEN) {
-          client.send(JSON.stringify(result));
+      switch (type) {
+        case "telemetria": {
+          // Persiste e retransmite a telemetria salva (enveloped) aos clientes.
+          const result = await TelemetryService.save(payload);
+          broadcast(envelope("telemetria", result));
+          break;
         }
-      });
+
+        case "ping": {
+          // Heartbeat: responde só ao remetente.
+          socket.send(envelope("pong"));
+          break;
+        }
+
+        default:
+          console.warn("Tipo de mensagem WS desconhecido:", type);
+      }
     } catch (error) {
       console.error("Erro ao processar mensagem WebSocket:", error);
     }

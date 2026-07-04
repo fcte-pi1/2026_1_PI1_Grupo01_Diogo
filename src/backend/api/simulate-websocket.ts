@@ -25,7 +25,8 @@ ws.on("open", () => {
       runId: "corrida-micromouse-v4",
     };
 
-    ws.send(JSON.stringify(payload));
+    // Envia no envelope padrão { type, payload }.
+    ws.send(JSON.stringify({ type: "telemetria", payload }));
     console.log(`Enviado pacote ${contador}`);
 
     if (contador >= 8) {
