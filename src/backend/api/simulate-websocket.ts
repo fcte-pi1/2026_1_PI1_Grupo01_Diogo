@@ -1,5 +1,6 @@
 import { WebSocket } from "ws";
 
+// Conecta como o ROBÔ (role=robo): só envia telemetria, não recebe o eco.
 const ws = new WebSocket("ws://localhost:3000/ws?role=robo");
 
 let contador = 0;
@@ -25,6 +26,7 @@ ws.on("open", () => {
       runId: "corrida-micromouse-v4",
     };
 
+    // Envia no envelope padrão { type, payload }.
     ws.send(JSON.stringify({ type: "telemetria", payload }));
     console.log(`Enviado pacote ${contador}`);
 
