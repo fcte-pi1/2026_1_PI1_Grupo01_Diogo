@@ -132,12 +132,19 @@ export function CorridaProvider({
       };
 
       ws.onmessage = (evento) => {
-        let dado: Telemetria;
+        let msg: { type?: string; payload?: Telemetria } & Partial<Telemetria>;
         try {
-          dado = JSON.parse(evento.data);
+          msg = JSON.parse(evento.data);
         } catch {
           return; // mensagem malformada — ignora
         }
+        if (!msg) return;
+
+        // Mensagens vêm no envelope { type, payload }. Só tratamos telemetria;
+        // ignoramos outros tipos (ex.: pong). Tolerante a objeto cru (sem type).
+        if (msg.type && msg.type !== "telemetria") return;
+        const dado = (msg.payload ?? msg) as Telemetria;
+
         if (!dado || !dado.runId) return;
         void tratarTelemetria(dado);
       };

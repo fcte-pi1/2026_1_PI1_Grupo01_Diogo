@@ -60,9 +60,13 @@ class MockWebSocket {
   abrir() {
     this.onopen?.();
   }
+  // Telemetria no envelope { type, payload } (formato real do backend).
   receber(obj: unknown) {
-    this.onmessage?.({ data: JSON.stringify(obj) });
+    this.onmessage?.({
+      data: JSON.stringify({ type: "telemetria", payload: obj }),
+    });
   }
+  // Mensagem arbitrária (para testar tolerância e tipos ignorados).
   receberRaw(data: string) {
     this.onmessage?.({ data });
   }
@@ -241,6 +245,35 @@ describe("CorridaProvider (WebSocket)", () => {
 
     expect(screen.getByTestId("telemetries-count").textContent).toBe("0");
     expect(screen.getByTestId("run-id").textContent).toBe("null");
+  });
+
+  it("ignora mensagens de outros tipos do envelope (ex.: pong)", async () => {
+    renderApp();
+    await iniciar();
+    const ws = MockWebSocket.ultima();
+
+    await act(async () => {
+      ws.receberRaw(JSON.stringify({ type: "pong" }));
+    });
+
+    expect(screen.getByTestId("telemetries-count").textContent).toBe("0");
+    expect(screen.getByTestId("run-id").textContent).toBe("null");
+  });
+
+  it("aceita telemetria em objeto cru (sem envelope), por tolerância", async () => {
+    vi.stubGlobal("fetch", criarFetchBackfill([])); // backfill vazio
+    renderApp();
+    await iniciar();
+    const ws = MockWebSocket.ultima();
+
+    await act(async () => {
+      ws.receberRaw(JSON.stringify(pontoAoVivo("cru-1", "run-9")));
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId("run-id").textContent).toBe("run-9");
+      expect(screen.getByTestId("telemetries-count").textContent).toBe("1");
+    });
   });
 
   it("ao parar, mantém o último caminho e fecha o WebSocket sem reconectar", async () => {
