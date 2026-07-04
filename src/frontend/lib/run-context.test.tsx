@@ -1,5 +1,11 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { render, screen, fireEvent, act } from "@testing-library/react";
+import {
+  render,
+  screen,
+  fireEvent,
+  act,
+  waitFor,
+} from "@testing-library/react";
 import { CorridaProvider, useCorridaContext } from "./run-context";
 
 // ============================================================
@@ -22,39 +28,97 @@ function TestConsumer() {
   );
 }
 
-const telemetriasMock = [
+// ============================================================
+// Mock de WebSocket: registra as instâncias criadas e expõe helpers
+// para o teste simular open / mensagem / close.
+// ============================================================
+class MockWebSocket {
+  static instances: MockWebSocket[] = [];
+  static ultima() {
+    return MockWebSocket.instances[MockWebSocket.instances.length - 1];
+  }
+
+  url: string;
+  closed = false;
+  onopen: (() => void) | null = null;
+  onmessage: ((ev: { data: string }) => void) | null = null;
+  onclose: (() => void) | null = null;
+  onerror: (() => void) | null = null;
+
+  constructor(url: string) {
+    this.url = url;
+    MockWebSocket.instances.push(this);
+  }
+
+  // API usada pelo run-context
+  close() {
+    this.closed = true;
+  }
+  send() {}
+
+  // Helpers de teste
+  abrir() {
+    this.onopen?.();
+  }
+  // Telemetria no envelope { type, payload } (formato real do backend).
+  receber(obj: unknown) {
+    this.onmessage?.({
+      data: JSON.stringify({ type: "telemetria", payload: obj }),
+    });
+  }
+  // Mensagem arbitrária (para testar tolerância e tipos ignorados).
+  receberRaw(data: string) {
+    this.onmessage?.({ data });
+  }
+  fechar() {
+    this.onclose?.();
+  }
+}
+
+// Telemetrias devolvidas pelo backfill (REST /runs/:id/telemetries).
+const backfillRun1 = [
   { id: "tel-1", runId: "run-1", tempoCorridaMs: 100, posicaoX: 0, posicaoY: 0, direcaoAtual: "NORTE", estadoRobo: "EXPLORANDO", bateriaPct: 90, distFrenteCm: 1, distEsquerdaCm: 1, distDireitaCm: 1, timestamp: "2026-06-08T09:00:00.000Z" },
   { id: "tel-2", runId: "run-1", tempoCorridaMs: 200, posicaoX: 1, posicaoY: 0, direcaoAtual: "NORTE", estadoRobo: "EXPLORANDO", bateriaPct: 89, distFrenteCm: 1, distEsquerdaCm: 1, distDireitaCm: 1, timestamp: "2026-06-08T09:00:01.000Z" },
 ];
 
-// Monta um mock de fetch que responde de forma diferente conforme a rota chamada
-function criarFetchMock({
-  runs = [{ id: "run-1", status: "EM_ANDAMENTO" }],
-  telemetries = telemetriasMock,
-}: { runs?: unknown[]; telemetries?: unknown[] } = {}) {
-  return vi.fn().mockImplementation((url: string) => {
-    if (url.includes("/telemetries")) {
-      return Promise.resolve({ ok: true, json: async () => telemetries });
-    }
-    if (url.endsWith("/runs")) {
-      return Promise.resolve({ ok: true, json: async () => runs });
-    }
-    return Promise.resolve({ ok: false, json: async () => ({}) });
-  });
+function pontoAoVivo(id: string, runId = "run-1") {
+  return { id, runId, tempoCorridaMs: 300, posicaoX: 2, posicaoY: 0, direcaoAtual: "NORTE", estadoRobo: "EXPLORANDO", bateriaPct: 88, distFrenteCm: 1, distEsquerdaCm: 1, distDireitaCm: 1, timestamp: "2026-06-08T09:00:02.000Z" };
+}
+
+// fetch usado só para o backfill.
+function criarFetchBackfill(telemetries: unknown[] = backfillRun1) {
+  return vi.fn().mockImplementation(() =>
+    Promise.resolve({ ok: true, json: async () => telemetries })
+  );
 }
 
 beforeEach(() => {
-  vi.useFakeTimers();
+  MockWebSocket.instances = [];
+  vi.stubGlobal("WebSocket", MockWebSocket);
+  vi.stubGlobal("fetch", criarFetchBackfill());
 });
 
 afterEach(() => {
-  vi.useRealTimers();
   vi.unstubAllGlobals();
+  vi.useRealTimers();
 });
+
+function renderApp() {
+  render(
+    <CorridaProvider>
+      <TestConsumer />
+    </CorridaProvider>
+  );
+}
+
+async function iniciar() {
+  await act(async () => {
+    fireEvent.click(screen.getByText("iniciar"));
+  });
+}
 
 // ============================================================
 describe("useCorridaContext()", () => {
-  // ----------------------------------------------------------
   it("deve lançar erro quando usado fora do CorridaProvider", () => {
     const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
@@ -72,178 +136,196 @@ describe("useCorridaContext()", () => {
 });
 
 // ============================================================
-describe("CorridaProvider", () => {
-  // ----------------------------------------------------------
-  it("deve começar com o estado inicial: parado, sem corrida e sem telemetrias", () => {
-    vi.stubGlobal("fetch", criarFetchMock());
-
-    render(
-      <CorridaProvider>
-        <TestConsumer />
-      </CorridaProvider>
-    );
+describe("CorridaProvider (WebSocket)", () => {
+  it("começa parado, sem corrida, e sem abrir WebSocket", () => {
+    renderApp();
 
     expect(screen.getByTestId("em-andamento").textContent).toBe("false");
     expect(screen.getByTestId("run-id").textContent).toBe("null");
     expect(screen.getByTestId("telemetries-count").textContent).toBe("0");
+    expect(MockWebSocket.instances).toHaveLength(0);
   });
 
-  // ----------------------------------------------------------
-  it("deve detectar a corrida ativa e popular as telemetrias após iniciar o acompanhamento", async () => {
-    vi.stubGlobal("fetch", criarFetchMock());
+  it("abre o WebSocket ao iniciar o acompanhamento", async () => {
+    renderApp();
+    await iniciar();
 
-    render(
-      <CorridaProvider>
-        <TestConsumer />
-      </CorridaProvider>
-    );
-
-    fireEvent.click(screen.getByText("iniciar"));
     expect(screen.getByTestId("em-andamento").textContent).toBe("true");
-
-    // Avança 1 ciclo de polling (1000ms) e espera as promises resolverem
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(1000);
-    });
-
-    expect(screen.getByTestId("run-id").textContent).toBe("run-1");
-    expect(screen.getByTestId("telemetries-count").textContent).toBe("2");
-    expect(screen.getByTestId("telemetria-atual").textContent).toBe("tel-2");
+    expect(MockWebSocket.instances).toHaveLength(1);
+    expect(MockWebSocket.ultima().url).toContain("/ws");
   });
 
-  // ----------------------------------------------------------
-  it("não deve travar em nenhuma corrida quando não há corrida EM_ANDAMENTO", async () => {
-    vi.stubGlobal("fetch", criarFetchMock({ runs: [] }));
+  it("ao receber telemetria de uma corrida nova, faz backfill via REST e popula a trajetória", async () => {
+    renderApp();
+    await iniciar();
 
-    render(
-      <CorridaProvider>
-        <TestConsumer />
-      </CorridaProvider>
-    );
-
-    fireEvent.click(screen.getByText("iniciar"));
+    const ws = MockWebSocket.ultima();
     await act(async () => {
-      await vi.advanceTimersByTimeAsync(1000);
+      ws.abrir();
+      ws.receber(pontoAoVivo("live-1", "run-1"));
     });
 
-    expect(screen.getByTestId("run-id").textContent).toBe("null");
+    await waitFor(() => {
+      expect(screen.getByTestId("run-id").textContent).toBe("run-1");
+      expect(screen.getByTestId("telemetries-count").textContent).toBe("2");
+      expect(screen.getByTestId("telemetria-atual").textContent).toBe("tel-2");
+    });
+    expect(fetch).toHaveBeenCalledWith(
+      expect.stringContaining("/runs/run-1/telemetries")
+    );
+  });
+
+  it("anexa pontos novos ao vivo (mesma corrida) após o backfill", async () => {
+    renderApp();
+    await iniciar();
+    const ws = MockWebSocket.ultima();
+
+    await act(async () => {
+      ws.receber(pontoAoVivo("live-1", "run-1")); // dispara backfill (2 pontos)
+    });
+    await waitFor(() =>
+      expect(screen.getByTestId("telemetries-count").textContent).toBe("2")
+    );
+
+    await act(async () => {
+      ws.receber(pontoAoVivo("tel-3", "run-1")); // ponto novo ao vivo
+    });
+    await waitFor(() => {
+      expect(screen.getByTestId("telemetries-count").textContent).toBe("3");
+      expect(screen.getByTestId("telemetria-atual").textContent).toBe("tel-3");
+    });
+  });
+
+  it("reinicia a trajetória quando chega uma corrida diferente", async () => {
+    // Backfill vazio para simplificar a asserção da corrida nova.
+    vi.stubGlobal("fetch", criarFetchBackfill([]));
+    renderApp();
+    await iniciar();
+    const ws = MockWebSocket.ultima();
+
+    await act(async () => {
+      ws.receber(pontoAoVivo("a1", "run-1"));
+    });
+    await waitFor(() =>
+      expect(screen.getByTestId("run-id").textContent).toBe("run-1")
+    );
+
+    await act(async () => {
+      ws.receber(pontoAoVivo("b1", "run-2"));
+    });
+    await waitFor(() => {
+      expect(screen.getByTestId("run-id").textContent).toBe("run-2");
+      expect(screen.getByTestId("telemetries-count").textContent).toBe("1");
+    });
+  });
+
+  it("se o backfill falhar, ainda mostra o ponto recebido ao vivo", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("rede")));
+    renderApp();
+    await iniciar();
+    const ws = MockWebSocket.ultima();
+
+    await act(async () => {
+      ws.receber(pontoAoVivo("live-1", "run-1"));
+    });
+    await waitFor(() => {
+      expect(screen.getByTestId("run-id").textContent).toBe("run-1");
+      expect(screen.getByTestId("telemetries-count").textContent).toBe("1");
+    });
+  });
+
+  it("ignora mensagens malformadas sem quebrar", async () => {
+    renderApp();
+    await iniciar();
+    const ws = MockWebSocket.ultima();
+
+    await act(async () => {
+      ws.receberRaw("{ not json");
+    });
+
     expect(screen.getByTestId("telemetries-count").textContent).toBe("0");
+    expect(screen.getByTestId("run-id").textContent).toBe("null");
   });
 
-  // ----------------------------------------------------------
-  it("após travar numa corrida, não deve mais consultar /runs nos ciclos seguintes", async () => {
-    const fetchMock = criarFetchMock();
-    vi.stubGlobal("fetch", fetchMock);
+  it("ignora mensagens de outros tipos do envelope (ex.: pong)", async () => {
+    renderApp();
+    await iniciar();
+    const ws = MockWebSocket.ultima();
 
-    render(
-      <CorridaProvider>
-        <TestConsumer />
-      </CorridaProvider>
-    );
-
-    fireEvent.click(screen.getByText("iniciar"));
     await act(async () => {
-      await vi.advanceTimersByTimeAsync(1000);
-    }); // 1º ciclo: consulta /runs e trava
-
-    fetchMock.mockClear();
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(1000);
-    }); // 2º ciclo: já travado
-
-    const chamou_runs = fetchMock.mock.calls.some(([url]) =>
-      String(url).endsWith("/runs")
-    );
-    const chamou_telemetries = fetchMock.mock.calls.some(([url]) =>
-      String(url).includes("/telemetries")
-    );
-
-    expect(chamou_runs).toBe(false);
-    expect(chamou_telemetries).toBe(true);
-  });
-
-  // ----------------------------------------------------------
-  it("deve parar o polling ao definir corridaEmAndamento como false, mantendo o último estado na tela", async () => {
-    const fetchMock = criarFetchMock();
-    vi.stubGlobal("fetch", fetchMock);
-
-    render(
-      <CorridaProvider>
-        <TestConsumer />
-      </CorridaProvider>
-    );
-
-    fireEvent.click(screen.getByText("iniciar"));
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(1000);
+      ws.receberRaw(JSON.stringify({ type: "pong" }));
     });
-    expect(screen.getByTestId("telemetries-count").textContent).toBe("2");
 
-    fireEvent.click(screen.getByText("parar"));
+    expect(screen.getByTestId("telemetries-count").textContent).toBe("0");
+    expect(screen.getByTestId("run-id").textContent).toBe("null");
+  });
+
+  it("aceita telemetria em objeto cru (sem envelope), por tolerância", async () => {
+    vi.stubGlobal("fetch", criarFetchBackfill([])); // backfill vazio
+    renderApp();
+    await iniciar();
+    const ws = MockWebSocket.ultima();
+
+    await act(async () => {
+      ws.receberRaw(JSON.stringify(pontoAoVivo("cru-1", "run-9")));
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId("run-id").textContent).toBe("run-9");
+      expect(screen.getByTestId("telemetries-count").textContent).toBe("1");
+    });
+  });
+
+  it("ao parar, mantém o último caminho e fecha o WebSocket sem reconectar", async () => {
+    vi.useFakeTimers();
+    renderApp();
+    await act(async () => {
+      fireEvent.click(screen.getByText("iniciar"));
+    });
+    const ws = MockWebSocket.ultima();
+
+    await act(async () => {
+      ws.receber(pontoAoVivo("live-1", "run-1"));
+      await Promise.resolve();
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByText("parar"));
+    });
+
     expect(screen.getByTestId("em-andamento").textContent).toBe("false");
-    // O último caminho permanece na tela para revisão
-    expect(screen.getByTestId("telemetries-count").textContent).toBe("2");
+    expect(ws.closed).toBe(true);
+    // caminho preservado
+    expect(
+      Number(screen.getByTestId("telemetries-count").textContent)
+    ).toBeGreaterThanOrEqual(1);
 
-    fetchMock.mockClear();
+    // Mesmo avançando o tempo, não reconecta (não cria nova instância).
+    const antes = MockWebSocket.instances.length;
     await act(async () => {
-      await vi.advanceTimersByTimeAsync(3000);
+      await vi.advanceTimersByTimeAsync(15000);
     });
-
-    // Com o polling parado, nenhuma nova chamada deve ocorrer
-    expect(fetchMock).not.toHaveBeenCalled();
+    expect(MockWebSocket.instances.length).toBe(antes);
   });
 
-  // ----------------------------------------------------------
-  it("não deve quebrar a aplicação quando o fetch falha (erro de rede)", async () => {
-    const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
-    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("Falha de rede")));
+  it("reconecta com backoff quando a conexão cai durante o acompanhamento", async () => {
+    vi.useFakeTimers();
+    renderApp();
+    await act(async () => {
+      fireEvent.click(screen.getByText("iniciar"));
+    });
+    expect(MockWebSocket.instances).toHaveLength(1);
 
-    render(
-      <CorridaProvider>
-        <TestConsumer />
-      </CorridaProvider>
-    );
+    // Conexão cai → agenda reconexão.
+    await act(async () => {
+      MockWebSocket.ultima().fechar();
+    });
 
-    fireEvent.click(screen.getByText("iniciar"));
+    // Avança o backoff (1s) → deve criar uma nova conexão.
     await act(async () => {
       await vi.advanceTimersByTimeAsync(1000);
     });
 
-    // Estado permanece consistente mesmo com erro
-    expect(screen.getByTestId("run-id").textContent).toBe("null");
-    expect(screen.getByTestId("telemetries-count").textContent).toBe("0");
-
-    consoleSpy.mockRestore();
-  });
-
-  // ----------------------------------------------------------
-  it("deve reiniciar do zero (limpar estado anterior) ao iniciar um novo acompanhamento", async () => {
-    const fetchMock = criarFetchMock();
-    vi.stubGlobal("fetch", fetchMock);
-
-    render(
-      <CorridaProvider>
-        <TestConsumer />
-      </CorridaProvider>
-    );
-
-    // Primeira observação: popula telemetrias
-    fireEvent.click(screen.getByText("iniciar"));
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(1000);
-    });
-    expect(screen.getByTestId("telemetries-count").textContent).toBe("2");
-
-    fireEvent.click(screen.getByText("parar"));
-
-    // Segunda observação: deve começar limpo (zerado) antes do próximo fetch resolver
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockReturnValue(new Promise(() => {})) // nunca resolve, para capturar o estado limpo
-    );
-    fireEvent.click(screen.getByText("iniciar"));
-
-    expect(screen.getByTestId("telemetries-count").textContent).toBe("0");
-    expect(screen.getByTestId("run-id").textContent).toBe("null");
+    expect(MockWebSocket.instances.length).toBe(2);
   });
 });
