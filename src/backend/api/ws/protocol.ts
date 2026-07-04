@@ -20,6 +20,20 @@ export function envelope(type: string, payload?: unknown): string {
   return JSON.stringify({ type, payload });
 }
 
+// Papel da conexão: o robô (produz telemetria) ou um app web (consome/visualiza).
+export type Papel = "robo" | "app";
+
+// Determina o papel a partir da URL de conexão (?role=robo). Default: "app".
+// Ex.: ws://host:3000/ws?role=robo  → robo ; ws://host:3000/ws → app.
+export function parsePapel(reqUrl: string | undefined): Papel {
+  try {
+    const url = new URL(reqUrl ?? "", "http://localhost");
+    return url.searchParams.get("role") === "robo" ? "robo" : "app";
+  } catch {
+    return "app";
+  }
+}
+
 // Interpreta uma mensagem recebida. Lança se o JSON for inválido.
 export function parseMensagem(raw: string): Envelope {
   const obj = JSON.parse(raw);

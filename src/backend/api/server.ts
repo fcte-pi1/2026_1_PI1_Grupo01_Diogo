@@ -4,7 +4,7 @@ import { createServer } from "http";
 import { WebSocket, WebSocketServer } from "ws";
 import { telemetryRoutes } from "./routes/telemetry.routes";
 import { TelemetryService } from "./services/telemetry.service";
-import { parseMensagem, envelope } from "./ws/protocol";
+import { parseMensagem, envelope, parsePapel } from "./ws/protocol";
 
 const app = express();
 
@@ -14,16 +14,28 @@ app.use("/api/telemetria", telemetryRoutes);
 const server = createServer(app);
 const wss = new WebSocketServer({ server, path: "/ws" });
 
-// Envia uma mensagem a todos os clientes conectados.
-function broadcast(data: string) {
-  wss.clients.forEach((client) => {
+// Conexões dos apps web (frontend). São elas que RECEBEM a telemetria ao vivo.
+// O robô (role=robo) só envia; não recebe de volta o próprio eco.
+const apps = new Set<WebSocket>();
+
+// Retransmite uma mensagem apenas para os apps web conectados.
+function broadcastApps(data: string) {
+  apps.forEach((client) => {
     if (client.readyState === WebSocket.OPEN) {
       client.send(data);
     }
   });
 }
 
-wss.on("connection", (socket) => {
+wss.on("connection", (socket, req) => {
+  const papel = parsePapel(req.url);
+
+  // Só os apps entram na lista de destinatários de broadcast.
+  if (papel === "app") {
+    apps.add(socket);
+    socket.on("close", () => apps.delete(socket));
+  }
+
   socket.on("message", async (message) => {
     try {
       // Aceita envelope { type, payload } ou objeto cru (tratado como telemetria).
@@ -31,9 +43,9 @@ wss.on("connection", (socket) => {
 
       switch (type) {
         case "telemetria": {
-          // Persiste e retransmite a telemetria salva (enveloped) aos clientes.
+          // Persiste e retransmite a telemetria salva (enveloped) só aos apps.
           const result = await TelemetryService.save(payload);
-          broadcast(envelope("telemetria", result));
+          broadcastApps(envelope("telemetria", result));
           break;
         }
 

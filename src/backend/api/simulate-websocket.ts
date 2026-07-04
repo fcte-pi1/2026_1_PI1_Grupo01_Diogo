@@ -1,6 +1,7 @@
 import { WebSocket } from "ws";
 
-const ws = new WebSocket("ws://localhost:3000/ws");
+// Conecta como o ROBÔ (role=robo): só envia telemetria, não recebe o eco.
+const ws = new WebSocket("ws://localhost:3000/ws?role=robo");
 
 let contador = 0;
 

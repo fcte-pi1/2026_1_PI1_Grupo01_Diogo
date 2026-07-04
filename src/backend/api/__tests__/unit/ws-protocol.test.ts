@@ -2,7 +2,7 @@
 // Testes Unitários — Protocolo do WebSocket (envelope { type, payload })
 // ============================================================
 
-import { parseMensagem, envelope } from "../../ws/protocol";
+import { parseMensagem, envelope, parsePapel } from "../../ws/protocol";
 
 describe("envelope()", () => {
   it("serializa no formato { type, payload }", () => {
@@ -51,5 +51,24 @@ describe("parseMensagem()", () => {
 
   it("lança quando o JSON é inválido", () => {
     expect(() => parseMensagem("{ nao json")).toThrow();
+  });
+});
+
+describe("parsePapel()", () => {
+  it("identifica o robô por ?role=robo", () => {
+    expect(parsePapel("/ws?role=robo")).toBe("robo");
+  });
+
+  it("usa 'app' como padrão quando não há role", () => {
+    expect(parsePapel("/ws")).toBe("app");
+  });
+
+  it("trata role=app explicitamente como app", () => {
+    expect(parsePapel("/ws?role=app")).toBe("app");
+  });
+
+  it("usa 'app' para url ausente ou inesperada", () => {
+    expect(parsePapel(undefined)).toBe("app");
+    expect(parsePapel("/ws?role=qualquer")).toBe("app");
   });
 });
