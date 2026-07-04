@@ -9,11 +9,10 @@ import {
 } from "react";
 
 const API_BASE = "http://localhost:3000/api/telemetria";
+const WS_URL = "ws://localhost:3000/ws";
 
-// A telemetria ao vivo é lida por polling HTTP. Mantemos a frequência baixa e
-// evitamos buscas/renders desnecessários para isso não virar um gargalo de
-// desempenho (menos requisições por ciclo e atualização só quando há ponto novo).
-const INTERVALO_POLLING_MS = 1000;
+// Backoff de reconexão do WebSocket: 1s, 2s, 4s... até no máximo 10s.
+const RECONEXAO_MAX_MS = 10000;
 
 export type Telemetria = {
   id: string;
@@ -68,12 +67,13 @@ export function CorridaProvider({
   const [runIdAtual, setRunIdAtual] =
     useState<string | null>(null);
 
-  // O robô é quem salva a corrida (POSTa telemetria continuamente). A web
-  // apenas OBSERVA: ao acompanhar, descobre qual corrida está recebendo dados
-  // e desenha a trajetória completa dela.
+  // O robô salva a corrida (envia telemetria pelo WebSocket). A web apenas
+  // OBSERVA: ao acompanhar, assina o WebSocket e vai recebendo cada telemetria
+  // nova por push (sem polling). O histórico da corrida (pontos anteriores à
+  // conexão) é carregado uma vez via REST — "backfill".
   useEffect(() => {
     if (!corridaEmAndamento) {
-      // Para o polling, mas mantém o último caminho na tela para revisão.
+      // Para de observar, mas mantém o último caminho na tela para revisão.
       return;
     }
 
@@ -82,59 +82,88 @@ export function CorridaProvider({
     setTelemetries([]);
     setRunIdAtual(null);
 
-    // Corrida na qual travamos a observação. Começa nula: só passa a desenhar
-    // quando o robô abre uma corrida ATIVA (EM_ANDAMENTO). Isso evita exibir a
-    // última corrida já finalizada ao clicar em "Iniciar Gravação".
-    let runAtivoId: string | null = null;
+    let ws: WebSocket | null = null;
+    let encerrado = false;              // marca o teardown para não reconectar
+    let tentativa = 0;                  // contador de backoff
+    let runCarregado: string | null = null; // corrida já "backfillada"
+    let timerReconexao: ReturnType<typeof setTimeout> | undefined;
 
-    // Quantidade de pontos já exibidos; usado para evitar re-render quando a
-    // trajetória não cresceu (corrida parada/finalizada) — ver nota no topo.
-    let ultimoTamanho = 0;
+    const anexarPonto = (t: Telemetria) => {
+      setTelemetries((prev) =>
+        prev.some((p) => p.id === t.id) ? prev : [...prev, t]
+      );
+      setTelemetria(t);
+    };
 
-    const intervalo = setInterval(async () => {
-      try {
-        // Enquanto não travou numa corrida, procura a corrida ativa atual.
-        // (Após travar, deixamos de bater em /runs — uma busca a menos por ciclo.)
-        if (!runAtivoId) {
-          const resRuns = await fetch(`${API_BASE}/runs`);
-          if (!resRuns.ok) return;
+    const tratarTelemetria = async (t: Telemetria) => {
+      // Corrida nova: carrega a trajetória já salva (backfill) e depois segue
+      // anexando os pontos ao vivo. Evita caminho incompleto ao conectar no meio.
+      if (t.runId !== runCarregado) {
+        runCarregado = t.runId;
+        setRunIdAtual(t.runId);
 
-          const runs: { id: string; status: string }[] =
-            await resRuns.json();
-
-          const ativa = Array.isArray(runs)
-            ? runs.find((r) => r.status === "EM_ANDAMENTO")
-            : undefined;
-
-          if (!ativa) return; // nenhuma corrida em andamento ainda
-
-          runAtivoId = ativa.id;
-          setRunIdAtual(ativa.id);
+        try {
+          const res = await fetch(`${API_BASE}/runs/${t.runId}/telemetries`);
+          if (res.ok) {
+            const historico: Telemetria[] = await res.json();
+            if (Array.isArray(historico) && historico.length > 0) {
+              setTelemetries(historico);
+              setTelemetria(historico[historico.length - 1]);
+              return;
+            }
+          }
+        } catch {
+          // Sem backfill: segue apenas com o ponto recebido ao vivo.
         }
 
-        // Busca a trajetória completa da corrida travada (ordenada, sem perdas).
-        // Continua puxando mesmo após o robô finalizá-la, para capturar o
-        // último ponto (ex.: OBJETIVO_ENCONTRADO).
-        const resTels = await fetch(
-          `${API_BASE}/runs/${runAtivoId}/telemetries`
-        );
-        if (!resTels.ok) return;
-
-        const dados: Telemetria[] = await resTels.json();
-        if (!Array.isArray(dados) || dados.length === 0) return;
-
-        // Nada novo: não atualiza o estado (evita re-renderizar o minimapa à toa).
-        if (dados.length === ultimoTamanho) return;
-        ultimoTamanho = dados.length;
-
-        setTelemetries(dados);
-        setTelemetria(dados[dados.length - 1]);
-      } catch (error) {
-        console.error("Erro ao buscar telemetria:", error);
+        setTelemetries([t]);
+        setTelemetria(t);
+        return;
       }
-    }, INTERVALO_POLLING_MS);
 
-    return () => clearInterval(intervalo);
+      anexarPonto(t);
+    };
+
+    const conectar = () => {
+      ws = new WebSocket(WS_URL);
+
+      ws.onopen = () => {
+        tentativa = 0;
+      };
+
+      ws.onmessage = (evento) => {
+        let dado: Telemetria;
+        try {
+          dado = JSON.parse(evento.data);
+        } catch {
+          return; // mensagem malformada — ignora
+        }
+        if (!dado || !dado.runId) return;
+        void tratarTelemetria(dado);
+      };
+
+      ws.onerror = () => {
+        ws?.close();
+      };
+
+      ws.onclose = () => {
+        if (encerrado) return;
+        // Reconexão com backoff exponencial.
+        const espera = Math.min(1000 * 2 ** tentativa, RECONEXAO_MAX_MS);
+        tentativa += 1;
+        timerReconexao = setTimeout(() => {
+          if (!encerrado) conectar();
+        }, espera);
+      };
+    };
+
+    conectar();
+
+    return () => {
+      encerrado = true;
+      if (timerReconexao) clearTimeout(timerReconexao);
+      ws?.close();
+    };
   }, [corridaEmAndamento]);
 
   return (
