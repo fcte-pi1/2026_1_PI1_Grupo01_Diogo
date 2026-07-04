@@ -40,7 +40,7 @@ function broadcast(clients: Set<WebSocket>, data: string) {
 
 export function setupRealtime(
   wss: WebSocketServer,
-  options: RealtimeOptions = {}
+  options: RealtimeOptions = {},
 ): RealtimeHandle {
   const heartbeatIntervalMs = options.heartbeatIntervalMs ?? 30_000;
   const appClients = new Set<WebSocket>();
@@ -73,7 +73,7 @@ export function setupRealtime(
         event: "connected",
         transport: "websocket",
         role: parsePapel(req.url),
-      })
+      }),
     );
 
     socket.on("pong", () => {
@@ -86,11 +86,15 @@ export function setupRealtime(
 
         switch (type) {
           case "telemetria": {
-            if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
+            if (
+              !payload ||
+              typeof payload !== "object" ||
+              Array.isArray(payload)
+            ) {
               sendError(
                 socket,
                 "INVALID_PAYLOAD",
-                "Mensagem WebSocket inválida: payload deve ser um objeto."
+                "Mensagem WebSocket inválida: payload deve ser um objeto.",
               );
               return;
             }
@@ -105,7 +109,7 @@ export function setupRealtime(
               sendError(
                 socket,
                 "INVALID_PAYLOAD",
-                "Mensagem WebSocket inválida: campos obrigatórios ausentes."
+                "Mensagem WebSocket inválida: campos obrigatórios ausentes.",
               );
               return;
             }
@@ -141,7 +145,7 @@ export function setupRealtime(
 
 export function attachRealtime(
   server: Server,
-  options: RealtimeOptions = {}
+  options: RealtimeOptions = {},
 ): RealtimeHandle {
   const wss = new WebSocketServer({
     server,
