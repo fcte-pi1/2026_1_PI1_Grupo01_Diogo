@@ -1,6 +1,6 @@
 import { WebSocket } from "ws";
 
-const ws = new WebSocket("ws://localhost:3000/ws");
+const ws = new WebSocket("ws://localhost:3000/ws?role=robo");
 
 let contador = 0;
 
@@ -25,7 +25,7 @@ ws.on("open", () => {
       runId: "corrida-micromouse-v4",
     };
 
-    ws.send(JSON.stringify(payload));
+    ws.send(JSON.stringify({ type: "telemetria", payload }));
     console.log(`Enviado pacote ${contador}`);
 
     if (contador >= 8) {
