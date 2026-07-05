@@ -27,8 +27,8 @@
 // =============================================================================
 
 // --- Wi-Fi (DHCP): pega o IP do roteador; leia o IP no serial no boot. --------
-const char*    WIFI_SSID = "<nome>";    // <-- nome da rede/roteador (copie do teste_reta)
-const char*    WIFI_PASS = "<senha>";   // <-- senha
+const char*    WIFI_SSID      = "VIVOFIBRA-8681";    // <-- coloque o nome da rede/hotspot
+const char*    WIFI_PASS      = "DSCBCkm8r3";   // <-- coloque a senha
 const uint16_t WIFI_PORTA      = 8080;
 const uint32_t WIFI_TIMEOUT_MS = 8000;
 WiFiServer server(WIFI_PORTA);
@@ -47,6 +47,10 @@ float KP = 5.0f, KI = 8.0f, KD = 0.3f;
 const float LIMITE_SAIDA    = 150.0f;
 const float LIMITE_INTEGRAL = 15.0f;
 const float PWM_MIN_GIRO    = 90.0f;    // piso quebra-atrito no fim do giro
+
+// --- Desaceleração angular (mata o overshoot: chega devagar no alvo) ---
+const float GRAUS_DECEL  = 40.0f;   // começa a frear a rotação nos últimos N graus
+const float VEL_GIRO_MIN = 95.0f;   // teto mínimo perto do alvo (>= PWM_MIN_GIRO)
 
 // --- Stress / sonda ---
 const int      STRESS_TURNOS = 10;      // nº de giros de 90 no comando '5'
@@ -203,8 +207,16 @@ Resultado girar(float alvoAbs) {
         if (agora - t0 > TIMEOUT_MS) { res.motivo = "timeout"; break; }
 
         float saida = pidGiro.calcular(erro, dt);
+        // Piso quebra-atrito: garante o mínimo pra completar o fim do giro.
         if (fabsf(erro) > TOL_ANGULO && fabsf(saida) < PWM_MIN_GIRO)
             saida = (erro > 0.0f) ? PWM_MIN_GIRO : -PWM_MIN_GIRO;
+        // Teto que DESACELERA perto do alvo: reduz a velocidade nos últimos
+        // GRAUS_DECEL pra chegar devagar e não passar (overshoot).
+        float teto = LIMITE_SAIDA;
+        if (fabsf(erro) < GRAUS_DECEL)
+            teto = VEL_GIRO_MIN + (LIMITE_SAIDA - VEL_GIRO_MIN) * (fabsf(erro) / GRAUS_DECEL);
+        if (saida >  teto) saida =  teto;
+        if (saida < -teto) saida = -teto;
         motoresSetCruzeiro(0);
         motoresSetCorrecao((int16_t)saida);
 

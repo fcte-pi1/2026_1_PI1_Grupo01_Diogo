@@ -55,3 +55,9 @@ uint16_t tofLerDistancia(int i) {
 
     return distanciaBruta;
 }
+
+// Valor CRU do sensor, sem nenhuma correção (pra diagnóstico das leituras).
+uint16_t tofLerDistanciaBruta(int i) {
+    if (i < 0 || i >= NUM_TOF) return UINT16_MAX;
+    return sensores[i].readRangeContinuousMillimeters();
+}
