@@ -5,6 +5,8 @@ import {
   useContext,
   useState,
   useEffect,
+  useMemo,
+  useRef,
   ReactNode,
 } from "react";
 
@@ -46,26 +48,16 @@ type CorridaContextType = {
   runIdAtual: string | null;
 };
 
-const CorridaContext = createContext<
-  CorridaContextType | undefined
->(undefined);
+const CorridaContext = createContext<CorridaContextType | undefined>(undefined);
 
-export function CorridaProvider({
-  children,
-}: {
-  children: ReactNode;
-}) {
-  const [corridaEmAndamento, setCorridaEmAndamento] =
-    useState(false);
+export function CorridaProvider({ children }: { children: ReactNode }) {
+  const [corridaEmAndamento, setCorridaEmAndamento] = useState(false);
 
-  const [telemetria, setTelemetria] =
-    useState<Telemetria | null>(null);
+  const [telemetria, setTelemetria] = useState<Telemetria | null>(null);
 
-  const [telemetries, setTelemetries] =
-    useState<Telemetria[]>([]);
+  const [telemetries, setTelemetries] = useState<Telemetria[]>([]);
 
-  const [runIdAtual, setRunIdAtual] =
-    useState<string | null>(null);
+  const [runIdAtual, setRunIdAtual] = useState<string | null>(null);
 
   // O robô salva a corrida (envia telemetria pelo WebSocket). A web apenas
   // OBSERVA: ao acompanhar, assina o WebSocket e vai recebendo cada telemetria
@@ -82,16 +74,21 @@ export function CorridaProvider({
     setTelemetries([]);
     setRunIdAtual(null);
 
+    // IDs já vistos nesta observação. Usar um Set torna a checagem de
+    // duplicata O(1) em vez de percorrer o array inteiro (prev.some(...))
+    // a cada pacote novo — importante em corridas longas, com muitos pontos.
+    const idsVistos = new Set<string>();
+
     let ws: WebSocket | null = null;
-    let encerrado = false;              // marca o teardown para não reconectar
-    let tentativa = 0;                  // contador de backoff
+    let encerrado = false; // marca o teardown para não reconectar
+    let tentativa = 0; // contador de backoff
     let runCarregado: string | null = null; // corrida já "backfillada"
     let timerReconexao: ReturnType<typeof setTimeout> | undefined;
 
     const anexarPonto = (t: Telemetria) => {
-      setTelemetries((prev) =>
-        prev.some((p) => p.id === t.id) ? prev : [...prev, t]
-      );
+      if (idsVistos.has(t.id)) return;
+      idsVistos.add(t.id);
+      setTelemetries((prev) => [...prev, t]);
       setTelemetria(t);
     };
 
@@ -101,12 +98,14 @@ export function CorridaProvider({
       if (t.runId !== runCarregado) {
         runCarregado = t.runId;
         setRunIdAtual(t.runId);
+        idsVistos.clear();
 
         try {
           const res = await fetch(`${API_BASE}/runs/${t.runId}/telemetries`);
           if (res.ok) {
             const historico: Telemetria[] = await res.json();
             if (Array.isArray(historico) && historico.length > 0) {
+              historico.forEach((p) => idsVistos.add(p.id));
               setTelemetries(historico);
               setTelemetria(historico[historico.length - 1]);
               return;
@@ -116,6 +115,7 @@ export function CorridaProvider({
           // Sem backfill: segue apenas com o ponto recebido ao vivo.
         }
 
+        idsVistos.add(t.id);
         setTelemetries([t]);
         setTelemetria(t);
         return;
@@ -173,28 +173,32 @@ export function CorridaProvider({
     };
   }, [corridaEmAndamento]);
 
+  // Só cria um objeto `value` novo quando algum dado relevante realmente
+  // mudou. Sem isso, todo re-render do Provider recriava o objeto e forçava
+  // TODOS os componentes que usam useCorridaContext() a re-renderizar junto
+  // — mesmo os que não usam o dado que mudou.
+  const value = useMemo(
+    () => ({
+      corridaEmAndamento,
+      setCorridaEmAndamento,
+      telemetria,
+      telemetries,
+      runIdAtual,
+    }),
+    [corridaEmAndamento, telemetria, telemetries, runIdAtual],
+  );
+
   return (
-    <CorridaContext.Provider
-      value={{
-        corridaEmAndamento,
-        setCorridaEmAndamento,
-        telemetria,
-        telemetries,
-        runIdAtual,
-      }}
-    >
-      {children}
-    </CorridaContext.Provider>
+    <CorridaContext.Provider value={value}>{children}</CorridaContext.Provider>
   );
 }
 
 export function useCorridaContext() {
-  const context =
-    useContext(CorridaContext);
+  const context = useContext(CorridaContext);
 
   if (!context) {
     throw new Error(
-      "useCorridaContext deve ser usado dentro de CorridaProvider"
+      "useCorridaContext deve ser usado dentro de CorridaProvider",
     );
   }
 
