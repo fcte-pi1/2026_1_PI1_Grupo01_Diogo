@@ -39,10 +39,15 @@ uint16_t tofLerDistancia(int i) {
     
     uint16_t distanciaBruta = sensores[i].readRangeContinuousMillimeters();
 
+    // Sensor 2 (direita): esta unidade tem um OFFSET CONSTANTE de ~+50 mm em toda
+    // a faixa (lê 50 mm a mais que o real, de forma proporcional). Corrige -50 mm.
+    // NOTA 1: map(95,300,45,250) é matematicamente IDÊNTICO a (distanciaBruta - 50).
+    // NOTA 2: a correção só é aplicada em 95..300 mm, que cobre a faixa de operação
+    //         (parede lateral e o limiar de ~140 mm). Fora dela (muito perto / muito
+    //         longe) a decisão de parede não muda, então segue sem corrigir.
     if (i == 2) {
         if (distanciaBruta > 2000) return distanciaBruta;
-        
-        // Se o sensor lê de 95 a 300mm, nós convertemos essa escala para 45 a 250mm
+
         if (distanciaBruta >= 95 && distanciaBruta <= 300) {
             return map(distanciaBruta, 95, 300, 45, 250);
         }

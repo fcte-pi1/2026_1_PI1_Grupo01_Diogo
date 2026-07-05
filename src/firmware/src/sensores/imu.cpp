@@ -15,11 +15,13 @@ bool imuInit() {
         return false;
     }
 
-    mpu.setGyroRange(MPU6050_RANGE_250_DEG);
+    // ±500°/s: o giro de curva satura ±250°/s (velGiro grudava em 249 em toda
+    // curva), subcontando o ângulo. ±500 dá folga pra medir a rotação real.
+    mpu.setGyroRange(MPU6050_RANGE_500_DEG);
     mpu.setAccelerometerRange(MPU6050_RANGE_2_G);
     mpu.setFilterBandwidth(MPU6050_BAND_21_HZ);
     tempoAnteriorIMU = millis();
-    Serial.println("[IMU] MPU6050 inicializado (±250°/s, ±2g, filtro 21Hz)");
+    Serial.println("[IMU] MPU6050 inicializado (±500°/s, ±2g, filtro 21Hz)");
     return true;
 }
 

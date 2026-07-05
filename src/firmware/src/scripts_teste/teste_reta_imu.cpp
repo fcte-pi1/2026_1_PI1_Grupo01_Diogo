@@ -22,15 +22,15 @@
 
 // --- Wi-Fi (opcional; se falhar, cai pra Serial e segue funcionando) ---
 const bool     WIFI_ATIVA     = true;
-const char*    WIFI_SSID      = "Fernando";
-const char*    WIFI_PASS      = "r53tgfd53t5e";
+const char*    WIFI_SSID      = "iPhone";    // <-- coloque o nome da rede/hotspot
+const char*    WIFI_PASS      = "06543210";   // <-- coloque a senha
 const uint16_t WIFI_PORTA     = 8080;
 const uint32_t WIFI_TIMEOUT_MS = 8000;
 WiFiServer server(WIFI_PORTA);
 WiFiClient client;
 
 // --- Parâmetros do teste ---
-const float    DISTANCIA_ALVO_CM = 16.8f;
+const float    DISTANCIA_ALVO_CM = 40.0f;
 const int16_t  PWM_BASE          = 120;    // velocidade de cruzeiro
 const uint16_t INTERVALO_MS      = 10;     // período do controle
 const uint32_t TIMEOUT_MS        = 8000;   // segurança: aborta se demorar demais

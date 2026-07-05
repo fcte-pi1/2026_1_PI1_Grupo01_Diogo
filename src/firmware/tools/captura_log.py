@@ -197,8 +197,10 @@ def main():
     g.add_argument("--ip", help="IP do robo (Wi-Fi/TCP porta 8080)")
     g.add_argument("--serial", help="porta serial, ex: /dev/ttyUSB0")
     ap.add_argument("--nome", default="teste", help="prefixo do arquivo de log")
+    ap.add_argument("--comando", default="s",
+                    help="tecla que dispara o teste: reta usa 's'; giro usa 1/2/3/4")
     ap.add_argument("--continuo", action="store_true",
-                    help="fica escutando; salva uma rajada por vez (nao dispara 's')")
+                    help="fica escutando; salva uma rajada por vez (nao dispara comando)")
     ap.add_argument("--sem-plot", action="store_true", help="nao plota no fim")
     args = ap.parse_args()
 
@@ -214,8 +216,8 @@ def main():
                     if not args.sem_plot:
                         plotar(caminho)
         else:
-            print("[captura] Enviando 's' para disparar o teste...")
-            fonte.send("s")
+            print(f"[captura] Enviando '{args.comando}' para disparar o teste...")
+            fonte.send(args.comando)
             linhas = capturar_rajada(fonte)
             if not linhas:
                 sys.exit("[captura] Conexao caiu antes do FIM da telemetria.")

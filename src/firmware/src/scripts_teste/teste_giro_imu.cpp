@@ -20,8 +20,8 @@
 // =============================================================================
 
 const bool     WIFI_ATIVA      = true;
-const char*    WIFI_SSID      = "Fernando";
-const char*    WIFI_PASS      = "r53tgfd53t5e";
+const char*    WIFI_SSID      = "iPhone";    // <-- coloque o nome da rede/hotspot
+const char*    WIFI_PASS      = "06543210";   // <-- coloque a senha
 const uint16_t WIFI_PORTA      = 8080;
 const uint32_t WIFI_TIMEOUT_MS = 8000;
 WiFiServer server(WIFI_PORTA);
@@ -182,6 +182,11 @@ void executarGiro(float alvo) {
     bool abortou = false;
     const char* motivo = "alvo";
 
+    // --- Diagnóstico: saúde do laço de controle e do giroscópio ---
+    float    dtMax      = 0.0f;   // maior período entre ciclos de controle (s)
+    uint16_t perdidosIMU = 0;     // ciclos com dt>0.2s: imuAtualizar DESCARTA a rotação
+    float    velGiroMax = 0.0f;   // maior |velGiro| lido (satura em ~250°/s)
+
     logLinha("[GIRO] Girando... (log so no fim)");
 
     while (true) {
@@ -193,11 +198,17 @@ void executarGiro(float alvo) {
         const float dt = (agora - ultimo) / 1000.0f;
         ultimo = agora;
 
+        // Saúde do laço: dt grande => algo (rede?) travou o loop; se passar de
+        // 0.2s, a imuAtualizar descarta a rotação daquele intervalo.
+        if (dt > dtMax) dtMax = dt;
+        if (dt > 0.2f)  perdidosIMU++;
+
         char cmd;
         if (lerComando(cmd) && (cmd == 'p' || cmd == 'P')) { abortou = true; motivo = "abortado"; break; }
 
         const float ang     = imuLerAnguloZ();
         const float velGiro = imuLerGiroZ();
+        if (fabsf(velGiro) > velGiroMax) velGiroMax = fabsf(velGiro);
         const float erro    = alvo - ang;
 
         // Conclusao normal: dentro da tolerancia e girando devagar.
@@ -251,11 +262,13 @@ void executarGiro(float alvo) {
     }
 
     const float angFinal = imuLerAnguloZ();
-    char resumo[112];
+    char resumo[200];
     snprintf(resumo, sizeof(resumo),
-             "[GIRO] Alvo %+.1f | Final %+.2f | Erro %+.2f | %lu ms | fim: %s",
+             "[GIRO] Alvo %+.1f | Final %+.2f | Erro %+.2f | %lu ms | fim: %s"
+             " || dtMax %.0fms | perdidosIMU %u | velGiroMax %.0f/s",
              alvo, angFinal, alvo - angFinal,
-             (unsigned long)(millis() - t0), motivo);
+             (unsigned long)(millis() - t0), motivo,
+             dtMax * 1000.0f, perdidosIMU, velGiroMax);
     logLinha(String(resumo));
 }
 
