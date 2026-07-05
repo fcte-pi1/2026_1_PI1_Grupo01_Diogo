@@ -227,6 +227,27 @@ void motoresParar() {
     }
 }
 
+// Freio ATIVO: short-brake (IN1=IN2=HIGH no TB6612 -> motor em curto -> freia).
+// Zera o estado interno e escreve direto nos pinos; como NAO passa pelo
+// aplicarSaida(0) (que faria coast), o freio persiste ate o proximo comando.
+void motoresFrear() {
+    modoCruzeiro  = false;
+    cruzeiroAlvo  = 0;
+    cruzeiroAtual = 0;
+    correcaoAtual = 0;
+    for (uint8_t i = 0; i < NUM_MOTORES; i++) {
+        estados[i].velocidadeAlvo  = 0;
+        estados[i].velocidadeAtual = 0;
+    }
+    if (!driverHabilitado) return;   // driver em standby: nao ha como frear
+    for (uint8_t i = 0; i < NUM_MOTORES; i++) {
+        const MotorConfig& cfg = configs[i];
+        digitalWrite(cfg.in1, HIGH);
+        digitalWrite(cfg.in2, HIGH);
+        pwmEscrever(cfg, PWM_MAX);
+    }
+}
+
 int16_t motorLerVelocidadeAtual(MotorId motor) {
     if (!motorValido(motor)) return 0;
     return estados[motor].velocidadeAtual;

@@ -41,5 +41,10 @@ void motoresSetCorrecao(int16_t correcao);   // diferencial imediato (PID)
 // Para ambos os modos: zera cruzeiro, correcao e alvos por-motor.
 void motoresParar();
 
+// Freio ATIVO (short-brake): curto-circuita os motores (as duas entradas do
+// TB6612 em HIGH) pra parar seco, matando o rolamento livre. Persiste até o
+// próximo comando de movimento. Use de preferência JÁ EM BAIXA velocidade.
+void motoresFrear();
+
 int16_t motorLerVelocidadeAtual(MotorId motor);  // saída aplicada AGORA (inclui rampa)
 int16_t motorLerVelocidadeAlvo(MotorId motor);

@@ -26,12 +26,9 @@
 // captura_log; os resumos por turno saem ao vivo no terminal.
 // =============================================================================
 
-// --- Wi-Fi: IP ESTATICO. Hotspot do iPhone usa a faixa 172.20.10.x. ----------
-const char*    WIFI_SSID = "iPhone";    // <-- nome da rede/hotspot
-const char*    WIFI_PASS = "06543210";   // <-- senha
-IPAddress      IP_ESTATICO(172, 20, 10, 5);   // <-- CONECTE SEMPRE NESTE IP
-IPAddress      GATEWAY    (172, 20, 10, 1);
-IPAddress      SUBNET     (255, 255, 255, 240);
+// --- Wi-Fi (DHCP): pega o IP do roteador; leia o IP no serial no boot. --------
+const char*    WIFI_SSID = "<nome>";    // <-- nome da rede/roteador (copie do teste_reta)
+const char*    WIFI_PASS = "<senha>";   // <-- senha
 const uint16_t WIFI_PORTA      = 8080;
 const uint32_t WIFI_TIMEOUT_MS = 8000;
 WiFiServer server(WIFI_PORTA);
@@ -312,12 +309,8 @@ void logLinha(const String& s) {
 }
 
 void conectarWiFi() {
-    Serial.printf("[STRESS] Conectando em \"%s\" com IP fixo %s ...\n",
-                  WIFI_SSID, IP_ESTATICO.toString().c_str());
+    Serial.printf("[STRESS] Conectando em \"%s\" (DHCP) ...\n", WIFI_SSID);
     WiFi.mode(WIFI_STA);
-    if (!WiFi.config(IP_ESTATICO, GATEWAY, SUBNET, GATEWAY)) {
-        Serial.println("[STRESS] WiFi.config falhou (verifique a faixa de IP).");
-    }
     WiFi.setSleep(false);   // sem modem-sleep: telemetria ao vivo fluida
     WiFi.begin(WIFI_SSID, WIFI_PASS);
 

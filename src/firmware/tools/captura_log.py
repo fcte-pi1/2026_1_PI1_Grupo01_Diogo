@@ -217,7 +217,7 @@ def main():
                         plotar(caminho)
         else:
             print(f"[captura] Enviando '{args.comando}' para disparar o teste...")
-            fonte.send(args.comando)
+            fonte.send(args.comando + "\n")
             linhas = capturar_rajada(fonte)
             if not linhas:
                 sys.exit("[captura] Conexao caiu antes do FIM da telemetria.")

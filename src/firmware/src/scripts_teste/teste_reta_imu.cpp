@@ -22,18 +22,23 @@
 
 // --- Wi-Fi (opcional; se falhar, cai pra Serial e segue funcionando) ---
 const bool     WIFI_ATIVA     = true;
-const char*    WIFI_SSID      = "iPhone";    // <-- coloque o nome da rede/hotspot
-const char*    WIFI_PASS      = "06543210";   // <-- coloque a senha
+const char*    WIFI_SSID      = "VIVOFIBRA-8681";    // <-- coloque o nome da rede/hotspot
+const char*    WIFI_PASS      = "DSCBCkm8r3";   // <-- coloque a senha
 const uint16_t WIFI_PORTA     = 8080;
 const uint32_t WIFI_TIMEOUT_MS = 8000;
 WiFiServer server(WIFI_PORTA);
 WiFiClient client;
 
 // --- Parâmetros do teste ---
-const float    DISTANCIA_ALVO_CM = 40.0f;
+float          DISTANCIA_ALVO_CM = 40.0f;   // mutável: mande um número pelo terminal p/ mudar o alvo
 const int16_t  PWM_BASE          = 120;    // velocidade de cruzeiro
 const uint16_t INTERVALO_MS      = 10;     // período do controle
 const uint32_t TIMEOUT_MS        = 8000;   // segurança: aborta se demorar demais
+
+// --- Desaceleração + freio ativo (mata o coast/inércia no fim) ---
+const int16_t  VEL_MIN   = 50;     // piso do cruzeiro ao desacelerar
+const float    DECEL_CM  = 8.0f;   // desacelera nos últimos N cm antes do alvo
+const uint32_t FREIO_MS  = 250;    // duração do short-brake no fim
 
 // --- Detecção de stall (rodas travadas: bateu na parede / enroscou) ---
 // Se os encoders nao avancam STALL_PULSOS_MIN por STALL_MS enquanto o robo ja
@@ -115,12 +120,28 @@ void loop() {
         }
     }
 
+    // Acumula uma linha: NÚMERO = distância alvo (cm); 's' = repetir a atual.
+    static String bufCmd = "";
     char c;
-    if (lerComando(c)) {
-        if (c == 's' || c == 'S') {
+    while (lerComando(c)) {
+        if (c != '\n' && c != '\r') {
+            if (bufCmd.length() < 12) bufCmd += c;
+            continue;
+        }
+        bufCmd.trim();
+        bool rodar = false;
+        if (bufCmd == "s" || bufCmd == "S") {
+            rodar = true;                       // repete com a distância atual
+        } else if (bufCmd.length() > 0) {
+            const float d = bufCmd.toFloat();
+            if (d > 0.5f) { DISTANCIA_ALVO_CM = d; rodar = true; }
+        }
+        bufCmd = "";
+        if (rodar) {
+            logLinha(String("[BANCADA] Rodando ") + String(DISTANCIA_ALVO_CM, 1) + " cm...");
             executarReta();
             despejarBuffer();
-            logLinha("[BANCADA] Fim. Envie 's' para repetir.");
+            logLinha("[BANCADA] Fim. Mande um numero (cm) ou 's' pra repetir.");
         }
     }
 
@@ -223,8 +244,15 @@ void executarReta() {
         const float erro = anguloAlvo - ang;
         const float correcao = pidRumo.calcular(erro, dt);
 
-        // Base rampeada + correção imediata.
-        motoresSetCruzeiro(PWM_BASE);
+        // Perfil de velocidade: cruzeiro cheio, desacelerando nos últimos
+        // DECEL_CM pra chegar devagar no alvo (coast mínimo, rumo sob controle).
+        int16_t velCruzeiro = PWM_BASE;
+        const float restante = DISTANCIA_ALVO_CM - distMedia;
+        if (restante < DECEL_CM) {
+            velCruzeiro = VEL_MIN + (int16_t)((PWM_BASE - VEL_MIN) * (restante / DECEL_CM));
+            if (velCruzeiro < VEL_MIN) velCruzeiro = VEL_MIN;
+        }
+        motoresSetCruzeiro(velCruzeiro);
         motoresSetCorrecao((int16_t)correcao);
 
         // Registra amostra (sem nenhum I/O).
@@ -243,15 +271,16 @@ void executarReta() {
         }
     }
 
-    // Frenagem: zera alvo e deixa a rampa dissipar a inércia (até parar de fato).
-    motoresParar();
+    // Frenagem ATIVA: short-brake pra matar o rolamento livre. Como já chegamos
+    // devagar (perfil de desaceleração), o freio é suave e trava o resíduo.
+    motoresFrear();
     const uint32_t tf = millis();
-    while ((motorLerVelocidadeAtual(MOTOR_ESQUERDO) != 0 ||
-            motorLerVelocidadeAtual(MOTOR_DIREITO)  != 0) &&
-           millis() - tf < 1500) {
-        motoresAtualizar();
+    while (millis() - tf < FREIO_MS) {
+        imuAtualizar();
         delay(2);
     }
+    motoresParar();
+    motoresAtualizar();
 
     if (abortou) logLinha("[BANCADA] ABORTADO pelo usuario.");
 }
