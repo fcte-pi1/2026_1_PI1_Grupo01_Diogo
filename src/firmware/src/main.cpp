@@ -6,6 +6,7 @@
 #include "atuadores/motores.h"
 #include "navegacao/navegacao.h"
 #include "navegacao/flood_fill.h"
+#include "comunicacao/telemetria.h"
 
 // =============================================================================
 // MICROMOUSE — Navegação por FLOOD FILL com movimento controlado por PID.
@@ -30,6 +31,9 @@ uint8_t  robY = 0;
 Direcao  robDir = NORTE;
 
 bool concluido = false;
+
+// Marco de tempo do início da corrida (para tempo_corrida_ms na telemetria).
+uint32_t inicioCorridaMs = 0;
 
 // Converte direção relativa (frente/esq/dir) do robô em direção absoluta.
 static inline Direcao dirFrente(Direcao h)  { return h; }
@@ -82,8 +86,13 @@ void setup() {
     labirinto.iniciar();              // paredes zeradas + moldura + objetivo central
     navZerarRumo();
 
+    // Sobe a telemetria (Wi-Fi + WebSocket) numa task no Core 0. A navegação
+    // segue no loop() (Core 1) sem ser travada pela rede.
+    telemetriaInit();
+
     Serial.println("=== PRONTO: coloque o robô em (0,0) olhando p/ NORTE ===");
     delay(2000);
+    inicioCorridaMs = millis();       // zera o cronômetro da corrida
 }
 
 void loop() {
@@ -103,12 +112,19 @@ void loop() {
     Serial.printf("[POS] (%u,%u) rumo=%u  dist=%u\n",
                   robX, robY, robDir, labirinto.distancia(robX, robY));
 
+    // Telemetria da célula atual (estado normal de exploração).
+    telemetriaAtualizar(millis() - inicioCorridaMs, robX, robY, robDir,
+                        "EXPLORANDO", false);
+
     // 3. Chegou ao centro?
     if (labirinto.ehObjetivo(robX, robY)) {
         Serial.println("=== OBJETIVO ALCANCADO! ===");
         labirinto.imprimirSerial();
         navParar();
         concluido = true;
+        // Estado terminal → backend finaliza a corrida como CONCLUIDA.
+        telemetriaAtualizar(millis() - inicioCorridaMs, robX, robY, robDir,
+                            "OBJETIVO_ENCONTRADO", true);
         return;
     }
 
@@ -118,6 +134,9 @@ void loop() {
         Serial.println("[MAIN] Preso: nenhuma direção válida.");
         navParar();
         concluido = true;
+        // Estado terminal → backend finaliza a corrida como NAO_CONCLUIDA.
+        telemetriaAtualizar(millis() - inicioCorridaMs, robX, robY, robDir,
+                            "ERRO", true);
         return;
     }
 
