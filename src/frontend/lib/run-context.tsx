@@ -5,9 +5,16 @@ import {
   useContext,
   useState,
   useEffect,
+  useMemo,
   useRef,
   ReactNode,
 } from "react";
+
+const API_BASE = "http://localhost:3000/api/telemetria";
+const WS_URL = "ws://localhost:3000/ws";
+
+// Backoff de reconexão do WebSocket: 1s, 2s, 4s... até no máximo 10s.
+const RECONEXAO_MAX_MS = 10000;
 
 export type Telemetria = {
   id: string;
@@ -31,6 +38,7 @@ export type Telemetria = {
 };
 
 type CorridaContextType = {
+  // Indica se a tela está acompanhando (observando) a corrida ao vivo.
   corridaEmAndamento: boolean;
   setCorridaEmAndamento: (v: boolean) => void;
 
@@ -40,138 +48,157 @@ type CorridaContextType = {
   runIdAtual: string | null;
 };
 
-const CorridaContext = createContext<
-  CorridaContextType | undefined
->(undefined);
+const CorridaContext = createContext<CorridaContextType | undefined>(undefined);
 
-export function CorridaProvider({
-  children,
-}: {
-  children: ReactNode;
-}) {
-  const [corridaEmAndamento, setCorridaEmAndamento] =
-    useState(false);
+export function CorridaProvider({ children }: { children: ReactNode }) {
+  const [corridaEmAndamento, setCorridaEmAndamento] = useState(false);
 
-  const [telemetria, setTelemetria] =
-    useState<Telemetria | null>(null);
+  const [telemetria, setTelemetria] = useState<Telemetria | null>(null);
 
-  const [telemetries, setTelemetries] =
-    useState<Telemetria[]>([]);
+  const [telemetries, setTelemetries] = useState<Telemetria[]>([]);
 
-  const [runIdAtual, setRunIdAtual] =
-    useState<string | null>(null);
+  const [runIdAtual, setRunIdAtual] = useState<string | null>(null);
 
-  const runIgnorada =
-    useRef<string | null>(null);
-
+  // O robô salva a corrida (envia telemetria pelo WebSocket). A web apenas
+  // OBSERVA: ao acompanhar, assina o WebSocket e vai recebendo cada telemetria
+  // nova por push (sem polling). O histórico da corrida (pontos anteriores à
+  // conexão) é carregado uma vez via REST — "backfill".
   useEffect(() => {
-    let intervalo: NodeJS.Timeout;
-
-    if (corridaEmAndamento) {
-      fetch(
-        "http://localhost:3000/api/telemetria/latest"
-      )
-        .then((res) => res.json())
-        .then((data) => {
-          runIgnorada.current =
-            data.runId || null;
-
-          setTelemetria(null);
-          setTelemetries([]);
-          setRunIdAtual(null);
-        })
-        .catch(() => {
-          setTelemetria(null);
-          setTelemetries([]);
-          setRunIdAtual(null);
-        });
-
-      console.log(
-        "Corrida iniciada! Aguardando novas telemetrias..."
-      );
-
-      intervalo = setInterval(async () => {
-        try {
-          const res = await fetch(
-            "http://localhost:3000/api/telemetria/latest"
-          );
-
-          if (!res.ok) return;
-
-          const data: Telemetria =
-            await res.json();
-
-          if (
-            runIgnorada.current &&
-            data.runId ===
-              runIgnorada.current
-          ) {
-            return;
-          }
-
-          setTelemetria(data);
-
-          setRunIdAtual(data.runId);
-
-          setTelemetries((anterior) => {
-            const existe =
-              anterior.some(
-                (t) => t.id === data.id
-              );
-
-            if (existe) {
-              return anterior;
-            }
-
-            return [
-              ...anterior,
-              data,
-            ];
-          });
-        } catch (error) {
-          console.error(
-            "Erro ao buscar telemetria:",
-            error
-          );
-        }
-      }, 500);
-    } else {
-      runIgnorada.current = null;
-
-      setTelemetria(null);
-      setTelemetries([]);
-      setRunIdAtual(null);
+    if (!corridaEmAndamento) {
+      // Para de observar, mas mantém o último caminho na tela para revisão.
+      return;
     }
 
-    return () => {
-      if (intervalo) {
-        clearInterval(intervalo);
+    // Começa a observação a partir de um estado limpo.
+    setTelemetria(null);
+    setTelemetries([]);
+    setRunIdAtual(null);
+
+    // IDs já vistos nesta observação. Usar um Set torna a checagem de
+    // duplicata O(1) em vez de percorrer o array inteiro (prev.some(...))
+    // a cada pacote novo — importante em corridas longas, com muitos pontos.
+    const idsVistos = new Set<string>();
+
+    let ws: WebSocket | null = null;
+    let encerrado = false; // marca o teardown para não reconectar
+    let tentativa = 0; // contador de backoff
+    let runCarregado: string | null = null; // corrida já "backfillada"
+    let timerReconexao: ReturnType<typeof setTimeout> | undefined;
+
+    const anexarPonto = (t: Telemetria) => {
+      if (idsVistos.has(t.id)) return;
+      idsVistos.add(t.id);
+      setTelemetries((prev) => [...prev, t]);
+      setTelemetria(t);
+    };
+
+    const tratarTelemetria = async (t: Telemetria) => {
+      // Corrida nova: carrega a trajetória já salva (backfill) e depois segue
+      // anexando os pontos ao vivo. Evita caminho incompleto ao conectar no meio.
+      if (t.runId !== runCarregado) {
+        runCarregado = t.runId;
+        setRunIdAtual(t.runId);
+        idsVistos.clear();
+
+        try {
+          const res = await fetch(`${API_BASE}/runs/${t.runId}/telemetries`);
+          if (res.ok) {
+            const historico: Telemetria[] = await res.json();
+            if (Array.isArray(historico) && historico.length > 0) {
+              historico.forEach((p) => idsVistos.add(p.id));
+              setTelemetries(historico);
+              setTelemetria(historico[historico.length - 1]);
+              return;
+            }
+          }
+        } catch {
+          // Sem backfill: segue apenas com o ponto recebido ao vivo.
+        }
+
+        idsVistos.add(t.id);
+        setTelemetries([t]);
+        setTelemetria(t);
+        return;
       }
+
+      anexarPonto(t);
+    };
+
+    const conectar = () => {
+      ws = new WebSocket(WS_URL);
+
+      ws.onopen = () => {
+        tentativa = 0;
+      };
+
+      ws.onmessage = (evento) => {
+        let msg: { type?: string; payload?: Telemetria } & Partial<Telemetria>;
+        try {
+          msg = JSON.parse(evento.data);
+        } catch {
+          return; // mensagem malformada — ignora
+        }
+        if (!msg) return;
+
+        // Mensagens vêm no envelope { type, payload }. Só tratamos telemetria;
+        // ignoramos outros tipos (ex.: pong). Tolerante a objeto cru (sem type).
+        if (msg.type && msg.type !== "telemetria") return;
+        const dado = (msg.payload ?? msg) as Telemetria;
+
+        if (!dado || !dado.runId) return;
+        void tratarTelemetria(dado);
+      };
+
+      ws.onerror = () => {
+        ws?.close();
+      };
+
+      ws.onclose = () => {
+        if (encerrado) return;
+        // Reconexão com backoff exponencial.
+        const espera = Math.min(1000 * 2 ** tentativa, RECONEXAO_MAX_MS);
+        tentativa += 1;
+        timerReconexao = setTimeout(() => {
+          if (!encerrado) conectar();
+        }, espera);
+      };
+    };
+
+    conectar();
+
+    return () => {
+      encerrado = true;
+      if (timerReconexao) clearTimeout(timerReconexao);
+      ws?.close();
     };
   }, [corridaEmAndamento]);
 
+  // Só cria um objeto `value` novo quando algum dado relevante realmente
+  // mudou. Sem isso, todo re-render do Provider recriava o objeto e forçava
+  // TODOS os componentes que usam useCorridaContext() a re-renderizar junto
+  // — mesmo os que não usam o dado que mudou.
+  const value = useMemo(
+    () => ({
+      corridaEmAndamento,
+      setCorridaEmAndamento,
+      telemetria,
+      telemetries,
+      runIdAtual,
+    }),
+    [corridaEmAndamento, telemetria, telemetries, runIdAtual],
+  );
+
   return (
-    <CorridaContext.Provider
-      value={{
-        telemetria,
-        telemetries,
-        runIdAtual,
-        corridaEmAndamento,
-        setCorridaEmAndamento,
-      }}
-    >
-      {children}
-    </CorridaContext.Provider>
+    <CorridaContext.Provider value={value}>{children}</CorridaContext.Provider>
   );
 }
 
 export function useCorridaContext() {
-  const context =
-    useContext(CorridaContext);
+  const context = useContext(CorridaContext);
 
   if (!context) {
     throw new Error(
-      "useCorridaContext deve ser usado dentro de CorridaProvider"
+      "useCorridaContext deve ser usado dentro de CorridaProvider",
     );
   }
 

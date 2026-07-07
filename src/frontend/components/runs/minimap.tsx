@@ -1,5 +1,7 @@
 "use client";
 
+import { useMemo } from "react";
+
 type Telemetry = {
   id: string;
   posicaoX: number;
@@ -12,14 +14,21 @@ type MinimapaProps = {
   telemetries: Telemetry[];
 };
 
-export function Minimapa({
-  tamanho,
-  telemetries,
-}: MinimapaProps) {
+export function Minimapa({ tamanho, telemetries }: MinimapaProps) {
   const posicaoAtual =
-    telemetries.length > 0
-      ? telemetries[telemetries.length - 1]
-      : null;
+    telemetries.length > 0 ? telemetries[telemetries.length - 1] : null;
+
+  // Pré-computa as células visitadas uma vez por atualização (Set de "x,y").
+  // Antes, cada célula do grid varria toda a lista de telemetrias (.some),
+  // dando O(células × telemetrias) por render. Com o Set, a checagem é O(1),
+  // baixando o custo total para O(células + telemetrias).
+  const visitadas = useMemo(() => {
+    const conjunto = new Set<string>();
+    for (const t of telemetries) {
+      conjunto.add(`${t.posicaoX},${t.posicaoY}`);
+    }
+    return conjunto;
+  }, [telemetries]);
 
   function classificarCelula(x: number, y: number) {
     if (
@@ -30,15 +39,7 @@ export function Minimapa({
       return "atual";
     }
 
-    const visitada = telemetries.some(
-      (t) =>
-        t.posicaoX === x &&
-        t.posicaoY === y
-    );
-
-    return visitada
-      ? "visitada"
-      : "inexplorada";
+    return visitadas.has(`${x},${y}`) ? "visitada" : "inexplorada";
   }
 
   return (
@@ -63,10 +64,7 @@ export function Minimapa({
           <div
             key={index}
             style={{
-              backgroundColor:
-                tipo === "visitada"
-                  ? "#888"
-                  : "#000",
+              backgroundColor: tipo === "visitada" ? "#888" : "#000",
               border: "1px solid #222",
               position: "relative",
             }}
@@ -79,17 +77,16 @@ export function Minimapa({
                   width: "100%",
                   height: "100%",
                   objectFit: "contain",
-                  imageRendering:
-                    "pixelated",
+                  imageRendering: "pixelated",
                   position: "absolute",
                   inset: 0,
+                  backgroundColor: "#009",
                 }}
               />
             )}
 
             {tipo === "atual" &&
-              posicaoAtual?.estadoRobo ===
-                "OBJETIVO_ENCONTRADO" && (
+              posicaoAtual?.estadoRobo === "OBJETIVO_ENCONTRADO" && (
                 <div
                   className="
                     absolute
@@ -97,9 +94,9 @@ export function Minimapa({
                     flex
                     items-center
                     justify-center
-                    text-xs
+                    text-4xl
                     font-bold
-                    text-green-400
+                    bg-green-500
                   "
                 >
                   🏁

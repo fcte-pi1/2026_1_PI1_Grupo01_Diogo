@@ -14,6 +14,10 @@ jest.mock("../../services/telemetry.service", () => ({
   TelemetryService: {
     save: jest.fn(),
     getLatest: jest.fn(),
+    deleteRun: jest.fn(),
+    getRunById: jest.fn(),
+    getRuns: jest.fn(),
+    getTelemetriesByRunId: jest.fn(),
   },
 }));
 
@@ -24,6 +28,11 @@ import { TelemetryService } from "../../services/telemetry.service";
 const app = express();
 app.use(cors(), express.json());
 app.use("/api/telemetria", telemetryRoutes);
+
+// Zera as contagens de chamadas entre os testes para evitar contaminação de estado.
+beforeEach(() => {
+  jest.clearAllMocks();
+});
 
 // Payload completo conforme contrato
 const payloadCompleto = {
@@ -203,6 +212,165 @@ describe("GET /api/telemetria/latest", () => {
     );
 
     const res = await request(app).get("/api/telemetria/latest");
+
+    expect(res.status).toBe(500);
+    expect(res.body).toHaveProperty("error");
+  });
+});
+
+// ============================================================
+const corridaAtiva = {
+  id: "corrida-1",
+  status: "EM_ANDAMENTO",
+  startedAt: "2026-06-07T09:59:00.000Z",
+  endedAt: null,
+};
+
+describe("DELETE /api/telemetria/runs/:id", () => {
+  it("deve deletar a corrida existente e retornar 204", async () => {
+    (TelemetryService.getRunById as jest.Mock).mockResolvedValue(corridaAtiva);
+    (TelemetryService.deleteRun as jest.Mock).mockResolvedValue(corridaAtiva);
+
+    const res = await request(app).delete("/api/telemetria/runs/corrida-1");
+
+    expect(res.status).toBe(204);
+    expect(TelemetryService.deleteRun).toHaveBeenCalledWith("corrida-1");
+  });
+
+  it("deve retornar 404 ao tentar deletar corrida inexistente", async () => {
+    (TelemetryService.getRunById as jest.Mock).mockResolvedValue(null);
+
+    const res = await request(app).delete("/api/telemetria/runs/xpto");
+
+    expect(res.status).toBe(404);
+    expect(TelemetryService.deleteRun).not.toHaveBeenCalled();
+  });
+});
+
+// ============================================================
+describe("GET /api/telemetria/runs", () => {
+  const listaDeCorridas = [
+    { id: "corrida-2", status: "EM_ANDAMENTO", startedAt: "2026-06-08T09:00:00.000Z" },
+    { id: "corrida-1", status: "CONCLUIDA", startedAt: "2026-06-07T09:59:00.000Z" },
+  ];
+
+  // ----------------------------------------------------------
+  it("deve retornar 200 com a lista de corridas", async () => {
+    (TelemetryService.getRuns as jest.Mock).mockResolvedValue(listaDeCorridas);
+
+    const res = await request(app).get("/api/telemetria/runs");
+
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual(listaDeCorridas);
+  });
+
+  // ----------------------------------------------------------
+  it("deve retornar 200 com array vazio quando não há corridas", async () => {
+    (TelemetryService.getRuns as jest.Mock).mockResolvedValue([]);
+
+    const res = await request(app).get("/api/telemetria/runs");
+
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual([]);
+  });
+
+  // ----------------------------------------------------------
+  it("deve retornar 500 quando o serviço falha", async () => {
+    (TelemetryService.getRuns as jest.Mock).mockRejectedValue(
+      new Error("Falha ao consultar o banco")
+    );
+
+    const res = await request(app).get("/api/telemetria/runs");
+
+    expect(res.status).toBe(500);
+    expect(res.body).toHaveProperty("error");
+  });
+});
+
+// ============================================================
+describe("GET /api/telemetria/runs/:id", () => {
+  const corrida = {
+    id: "corrida-1",
+    status: "CONCLUIDA",
+    startedAt: "2026-06-07T09:59:00.000Z",
+    endedAt: "2026-06-07T10:05:00.000Z",
+  };
+
+  // ----------------------------------------------------------
+  it("deve retornar 200 com a corrida quando ela existe", async () => {
+    (TelemetryService.getRunById as jest.Mock).mockResolvedValue(corrida);
+
+    const res = await request(app).get("/api/telemetria/runs/corrida-1");
+
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual(corrida);
+  });
+
+  // ----------------------------------------------------------
+  it("deve retornar 404 quando a corrida não existe", async () => {
+    (TelemetryService.getRunById as jest.Mock).mockResolvedValue(null);
+
+    const res = await request(app).get("/api/telemetria/runs/inexistente");
+
+    expect(res.status).toBe(404);
+    expect(res.body).toHaveProperty("error");
+  });
+
+  // ----------------------------------------------------------
+  it("deve retornar 500 quando o serviço falha", async () => {
+    (TelemetryService.getRunById as jest.Mock).mockRejectedValue(
+      new Error("Falha ao consultar o banco")
+    );
+
+    const res = await request(app).get("/api/telemetria/runs/corrida-1");
+
+    expect(res.status).toBe(500);
+    expect(res.body).toHaveProperty("error");
+  });
+});
+
+// ============================================================
+describe("GET /api/telemetria/runs/:id/telemetries", () => {
+  const telemetriasDaCorrida = [
+    { id: "tel-1", runId: "corrida-1", tempoCorridaMs: 100 },
+    { id: "tel-2", runId: "corrida-1", tempoCorridaMs: 200 },
+  ];
+
+  // ----------------------------------------------------------
+  it("deve retornar 200 com as telemetrias da corrida", async () => {
+    (TelemetryService.getTelemetriesByRunId as jest.Mock).mockResolvedValue(
+      telemetriasDaCorrida
+    );
+
+    const res = await request(app).get(
+      "/api/telemetria/runs/corrida-1/telemetries"
+    );
+
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual(telemetriasDaCorrida);
+  });
+
+  // ----------------------------------------------------------
+  it("deve retornar 200 com array vazio quando a corrida não possui telemetrias", async () => {
+    (TelemetryService.getTelemetriesByRunId as jest.Mock).mockResolvedValue([]);
+
+    const res = await request(app).get(
+      "/api/telemetria/runs/corrida-sem-dados/telemetries"
+    );
+
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual([]);
+  });
+
+  // ----------------------------------------------------------
+  it("deve retornar 500 quando o serviço falha", async () => {
+    (TelemetryService.getTelemetriesByRunId as jest.Mock).mockRejectedValue(
+      new Error("Falha ao consultar o banco")
+    );
+
+    const res = await request(app).get(
+      "/api/telemetria/runs/corrida-1/telemetries"
+    );
 
     expect(res.status).toBe(500);
     expect(res.body).toHaveProperty("error");
