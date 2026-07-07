@@ -25,10 +25,10 @@
 void telemetriaInit();
 
 // Atualiza o snapshot com o estado atual do robô (chamar do Core 1 / navegação).
-//   estado:   string EXATA que o backend reconhece —
-//             "EXPLORANDO" (normal), "OBJETIVO_ENCONTRADO" (chegou ao centro),
-//             "ERRO" (preso). Estados terminais disparam envio imediato.
-//   terminal: true nos estados finais, para forçar o envio na hora.
+//   estado: string EXATA que o backend reconhece —
+//           "EXPLORANDO" (normal), "OBJETIVO_ENCONTRADO" (chegou ao centro),
+//           "ERRO" (preso). Estados terminais disparam envio imediato (o próprio
+//           módulo detecta isso pelo estado, via telemetria::estadoTerminal()).
 void telemetriaAtualizar(uint32_t tempoCorridaMs,
                          uint8_t x, uint8_t y, Direcao dir,
-                         const char *estado, bool terminal);
+                         const char *estado);

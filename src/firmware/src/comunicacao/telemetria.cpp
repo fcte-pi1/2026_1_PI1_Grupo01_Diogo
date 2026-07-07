@@ -2,13 +2,15 @@
 
 #include <WiFi.h>
 #include <WebSocketsClient.h>
-#include <ArduinoJson.h>
+#include <string>
 
 #include "config/rede.h"
 #include "sensores/tof.h"
+#include "comunicacao/telemetria_contrato.h"
 
 // =============================================================================
-// Estado do módulo (privado ao arquivo).
+// Estado do módulo (privado ao arquivo). A montagem do JSON e as regras do
+// contrato ficam no módulo PURO telemetria_contrato (testável no host).
 //
 // - snap:        snapshot compartilhado entre a navegação (Core 1, escreve) e a
 //                task de telemetria (Core 0, lê). Protegido por mutexSnapshot.
@@ -17,58 +19,21 @@
 //                num estado terminal; consumida pela task.
 // =============================================================================
 
-struct Snapshot {
-    uint32_t tempoCorridaMs;
-    uint8_t  x;
-    uint8_t  y;
-    uint8_t  dir;
-    char     estado[24];
-    uint16_t frenteMm;
-    uint16_t esqMm;
-    uint16_t dirMm;
-};
-
-static WebSocketsClient  webSocket;
-static SemaphoreHandle_t mutexSnapshot = nullptr;
-static Snapshot          snap;
-static volatile bool     wsConectado = false;
-static volatile bool     enviarJa    = false;
-
-static const char *dirParaTexto(uint8_t d) {
-    switch (d) {
-        case NORTE: return "NORTE";
-        case LESTE: return "LESTE";
-        case SUL:   return "SUL";
-        case OESTE: return "OESTE";
-    }
-    return "NORTE";
-}
+static WebSocketsClient    webSocket;
+static SemaphoreHandle_t   mutexSnapshot = nullptr;
+static telemetria::Snapshot snap;
+static volatile bool       wsConectado = false;
+static volatile bool       enviarJa    = false;
 
 // Copia o snapshot sob lock, serializa no contrato { type, payload } e envia.
 static void enviarTelemetria() {
-    Snapshot s;
+    telemetria::Snapshot s;
     if (xSemaphoreTake(mutexSnapshot, portMAX_DELAY) != pdTRUE) return;
     s = snap;
     xSemaphoreGive(mutexSnapshot);
 
-    JsonDocument doc;
-    doc["type"] = "telemetria";
-    JsonObject p = doc["payload"].to<JsonObject>();
-    p["tempo_corrida_ms"] = s.tempoCorridaMs;
-    p["posicao_x"]        = s.x;
-    p["posicao_y"]        = s.y;
-    p["direcao_atual"]    = dirParaTexto(s.dir);
-    p["estado_robo"]      = s.estado;
-    p["bateria_pct"]      = 100;   // placeholder — sem INA219 neste firmware (D3)
-
-    JsonObject sensores = p["leitura_sensores"].to<JsonObject>();
-    sensores["dist_frente_cm"]   = s.frenteMm / 10.0;
-    sensores["dist_esquerda_cm"] = s.esqMm / 10.0;
-    sensores["dist_direita_cm"]  = s.dirMm / 10.0;
-
-    String out;
-    serializeJson(doc, out);
-    webSocket.sendTXT(out);
+    const std::string out = telemetria::montarEnvelope(s);
+    webSocket.sendTXT(out.c_str());
 }
 
 static void onWsEvent(WStype_t type, uint8_t *payload, size_t length) {
@@ -137,7 +102,8 @@ static void tarefaTelemetria(void *param) {
 void telemetriaInit() {
     mutexSnapshot = xSemaphoreCreateMutex();
     memset(&snap, 0, sizeof(snap));
-    strncpy(snap.estado, "INICIANDO", sizeof(snap.estado) - 1);
+    snap.estado     = "INICIANDO";
+    snap.bateriaPct = 100;   // placeholder — sem INA219 neste firmware (D3)
 
     // Fixa a task no Core 0 (o loop()/navegação fica no Core 1).
     xTaskCreatePinnedToCore(
@@ -153,7 +119,7 @@ void telemetriaInit() {
 
 void telemetriaAtualizar(uint32_t tempoCorridaMs,
                          uint8_t x, uint8_t y, Direcao dir,
-                         const char *estado, bool terminal) {
+                         const char *estado) {
     // Leitura dos ToF acontece AQUI (Core 1 / dono do I²C), não na task.
     const uint16_t frente = tofLerDistancia(0);
     const uint16_t esq    = tofLerDistancia(1);
@@ -161,16 +127,16 @@ void telemetriaAtualizar(uint32_t tempoCorridaMs,
 
     if (xSemaphoreTake(mutexSnapshot, portMAX_DELAY) == pdTRUE) {
         snap.tempoCorridaMs = tempoCorridaMs;
-        snap.x   = x;
-        snap.y   = y;
-        snap.dir = dir;
-        strncpy(snap.estado, estado, sizeof(snap.estado) - 1);
-        snap.estado[sizeof(snap.estado) - 1] = '\0';
+        snap.x      = x;
+        snap.y      = y;
+        snap.dir    = dir;
+        snap.estado = estado;   // sempre string literal (lifetime estático)
         snap.frenteMm = frente;
         snap.esqMm    = esq;
         snap.dirMm    = dirD;
         xSemaphoreGive(mutexSnapshot);
     }
 
-    if (terminal) enviarJa = true;   // força envio imediato do estado final
+    // Estado terminal força envio imediato (não espera o tick de 5 Hz).
+    if (telemetria::estadoTerminal(estado)) enviarJa = true;
 }

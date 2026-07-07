@@ -114,7 +114,7 @@ void loop() {
 
     // Telemetria da célula atual (estado normal de exploração).
     telemetriaAtualizar(millis() - inicioCorridaMs, robX, robY, robDir,
-                        "EXPLORANDO", false);
+                        "EXPLORANDO");
 
     // 3. Chegou ao centro?
     if (labirinto.ehObjetivo(robX, robY)) {
@@ -124,7 +124,7 @@ void loop() {
         concluido = true;
         // Estado terminal → backend finaliza a corrida como CONCLUIDA.
         telemetriaAtualizar(millis() - inicioCorridaMs, robX, robY, robDir,
-                            "OBJETIVO_ENCONTRADO", true);
+                            "OBJETIVO_ENCONTRADO");
         return;
     }
 
@@ -136,7 +136,7 @@ void loop() {
         concluido = true;
         // Estado terminal → backend finaliza a corrida como NAO_CONCLUIDA.
         telemetriaAtualizar(millis() - inicioCorridaMs, robX, robY, robDir,
-                            "ERRO", true);
+                            "ERRO");
         return;
     }
 
