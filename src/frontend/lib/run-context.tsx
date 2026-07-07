@@ -10,8 +10,7 @@ import {
   ReactNode,
 } from "react";
 
-const API_BASE = "http://localhost:3000/api/telemetria";
-const WS_URL = "ws://localhost:3000/ws";
+import { backendHttp, backendWs } from "./backend";
 
 // Backoff de reconexão do WebSocket: 1s, 2s, 4s... até no máximo 10s.
 const RECONEXAO_MAX_MS = 10000;
@@ -101,7 +100,9 @@ export function CorridaProvider({ children }: { children: ReactNode }) {
         idsVistos.clear();
 
         try {
-          const res = await fetch(`${API_BASE}/runs/${t.runId}/telemetries`);
+          const res = await fetch(
+            `${backendHttp()}/api/telemetria/runs/${t.runId}/telemetries`,
+          );
           if (res.ok) {
             const historico: Telemetria[] = await res.json();
             if (Array.isArray(historico) && historico.length > 0) {
@@ -125,7 +126,7 @@ export function CorridaProvider({ children }: { children: ReactNode }) {
     };
 
     const conectar = () => {
-      ws = new WebSocket(WS_URL);
+      ws = new WebSocket(backendWs());
 
       ws.onopen = () => {
         tentativa = 0;

@@ -1,5 +1,6 @@
 import { TelemetriaPanel } from "@/components/runs/telemetria-panel";
 import { Minimapa } from "@/components/runs/minimap";
+import { backendHttp } from "@/lib/backend";
 
 type Props = {
   params: Promise<{
@@ -15,13 +16,13 @@ export default async function CorridaHistoricaPage({
   const [runResponse, telemetriesResponse] =
     await Promise.all([
       fetch(
-        `http://localhost:3000/api/telemetria/runs/${id}`,
+        `${backendHttp()}/api/telemetria/runs/${id}`,
         {
           cache: "no-store",
         }
       ),
       fetch(
-        `http://localhost:3000/api/telemetria/runs/${id}/telemetries`,
+        `${backendHttp()}/api/telemetria/runs/${id}/telemetries`,
         {
           cache: "no-store",
         }
