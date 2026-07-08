@@ -6,7 +6,31 @@
 
 ---
 
-## ⚡ ATUALIZAÇÃO 2026-07-07 (LER PRIMEIRO — estado mais recente)
+## 🚀 ATUALIZAÇÃO 2026-07-08 (LER PRIMEIRO — estado MAIS recente)
+
+**INTEGRAÇÃO EM ANDAMENTO — Inc 1–4 PORTADOS E VALIDADOS end-to-end no `navegacao.cpp`.** As primitivas validadas em bancada foram portadas pra produção UMA POR VEZ, cada uma testada ISOLADA antes de seguir (bancada nova `teste_navegacao.cpp` / env `teste_navegacao`). Hoje o robô, chamando as primitivas de produção, faz: **reta+centralização em cascata, giro com viés, esquadro por toque e RÉ — tudo sem bater na parede** (~18.2 cm/célula, ré recua 18–19 cm com rumo~0, giros/curvas/esquadro ok).
+
+**O que ENTROU no `navegacao.cpp` (todos os "A FAZER" da v07/07 do bloco abaixo já resolvidos):**
+- `TAMANHO_CELULA_CM = 18` (era 16.8 errado). `MARGEM_CELULA_CM = 2.4`.
+- **Sinal da centralização CORRIGIDO** — agora é a CASCATA (posição→setpoint de rumo), não mais o diferencial invertido antigo. Laço externo `erroPos=(difC−DIF_ALVO)`→`viesRumo` (teto `VIES_RUMO_MAX`); laço interno PID de rumo persegue. **Deadband CONTÍNUO** (zero dentro da zona, subtrai a borda fora — sem degrau) mata o limit-cycle/serpenteio.
+- **Arrancada resolvida:** `motoresIniciarCruzeiro(base)` (kickstart, pula a rampa 0→base) — antes uma roda saía primeiro/girava no lugar na largada.
+- **Rumo rampado** (`RAMPA_RUMO_CM=8`): alvo ramp de `angInicial`→bússola cheia → o viés da curva completa suave/simétrico (parou de puxar pós-curva).
+- **Beco/180° = SAIR DE RÉ** uma célula (`navAndarUmaCelula(true)`), NÃO gira 180 no lugar (robô comprido varreria a lateral). Heading-hold funciona igual de ré; só a centralização inverte de sinal. Flood fill re-decide.
+
+**Valores default calibrados (todos LIVE-TUNÁVEIS via setters):** `KP_POS=0.07`, `VIES_RUMO_MAX=5`, `DEADBAND_POS=14`, `VIES_CURVA=11` (validado 2 lados), toque `PWM_TOQUE=38`/`PWM_CONFIRM=70`/`TOF_CREEP_MM=150`, `DIF_ALVO=−55`, `VEL_MIN_RETA=65`. **`VEL_BASE` baixado 100→85 (08/07)** contra serpenteio residual ("quase raspa mas nada grave"): mais tempo/cm p/ corrigir = mais margem + deriva mais devagar; foi a opção mais SEGURA (sem novo modo de falha). **Compila (build producao exit 0).**
+
+**FALTA (próximo chat) — Inc 5 e 6:**
+1. **Inc 5 — fiar tudo no `main.cpp`:** (a) **filtro de sanidade do ToF** nas leituras de PAREDE (`registrarParedes`/`navParede*` — rejeitar 0/8190/>2000); (b) **CARREGAR o resíduo de rumo entre células**; (c) **RE-ZERAR o rumo no esquadro** (re-referência física na parede a cada junção → bounda a deriva por corredor, não deixa acumular no labirinto).
+2. **Inc 6 — corrida completa flood fill 4×4.**
+3. Se ainda raspar na corrida cheia: **filtro passa-baixa leve no `difC`** (cuidado — filtro demais = lag = re-oscila; por isso NÃO foi feito ainda, é o último recurso).
+
+**Bancada `teste_navegacao` (env `teste_navegacao`):** `<num>`=anda N células (loga cm+rumo/cél), `a`=1cel, `r`=ré, `d/e`=giro puro (zera IMU+rumo por giro, loga resíduo pra fora), `cd/ce`=curva completa, `x`=esquadro, `v<n>`=viés, `kp/vm/db`=centro ao vivo (`vm` casado ANTES de `v`), `s`=repete, `z`=rezera. WiFi no topo do arquivo = `Vilbs`/`12345678` (IP sai no serial no boot).
+
+Assimetria leve de giro sobra (e resíduo ~+12° vs d ~+7°, ambos PRA FORA/lado seguro) — não bloqueia.
+
+---
+
+## ⚡ ATUALIZAÇÃO 2026-07-07 (estado anterior — os "A FAZER" da integração aqui já foram feitos; ver bloco 08/07 acima)
 
 Muita coisa avançou depois de 05/07. Este bloco é o estado ATUAL; o resto do doc abaixo é o histórico/detalhe de 05/07.
 
@@ -214,11 +238,7 @@ tools/captura_log.py     -> captura telemetria CSV (Wi-Fi TCP ou Serial)
 
 0. **Sempre testar/rodar com bateria > 60–70%** (a maioria dos "bugs" intermitentes era sag de bateria; ver ATUALIZAÇÃO).
 0.5. **REVALIDAR a curva ANTES de integrar** (passo imediato, decisão do usuário 07/07): com a **bateria carregada**, rodar vários `cd`/`ce` no `teste_curva_planoA`, gerar logs e confirmar que está tudo consistente (sem viés, sem raspar, sem reset). Só avançar pra integração depois disso estar limpo e sem nada incomodando.
-1. **Integrar no `navegacao.cpp`** (`navAndarUmaCelula` / `navGirarDelta`) — o grande passo que falta:
-   - Portar as primitivas validadas do `teste_curva_planoA` (esquadro+giro c/ viés+saída centralizada) e da reta (desaceleração+freio).
-   - **Corrigir o sinal da centralização** (o do `navegacao.cpp` está INVERTIDO).
-   - Corrigir `TAMANHO_CELULA_CM` → **18** (é o pitch).
-   - **Carregar o resíduo** entre células; desligar centralização sem parede dos 2 lados.
+1. ✅ **FEITO (08/07) — Integrar no `navegacao.cpp`** (Inc 1–4, ver bloco 08/07 no topo): primitivas portadas e validadas isoladas, sinal da centralização corrigido (cascata), `TAMANHO_CELULA_CM=18`, arrancada+rumo rampado, ré p/ beco, `VEL_BASE` 100→85. **O que restou daqui** (carregar resíduo entre células + re-zerar rumo no esquadro) foi movido pro **Inc 5 (main.cpp)** abaixo.
 2. **Filtro de sanidade no ToF** (rejeitar 8190/valores fora de faixa) — importante pra leitura de parede na navegação.
 3. **Corrida completa no 4×4** (flood fill).
 4. **Plano B de emergência:** seguidor de parede (regra da mão direita) resolve muitos 4×4 se a integração empacar no prazo.

@@ -63,7 +63,7 @@ void setup() {
     navZerarRumo();   // bússola de referência = rumo atual (0 após zerar o IMU)
 
     conectarWiFi();
-    logLinha("[NAVTEST] Pronto. <num>=anda N | a=1 cel | cd/ce=curva completa | x=esquadro | d/e=gira 90 | v<n>=vies | s=repete | z=rezera");
+    logLinha("[NAVTEST] Pronto. <num>=anda | a=1cel | cd/ce=curva | x=esq | r=re | d/e=gira | v=vies | kp/vm/db=centro | s=repete | z=rezera");
 }
 
 void loop() {
@@ -72,7 +72,7 @@ void loop() {
             if (client) client.stop();
             client = server.available();
             logLinha("=== Conectado a bancada de navegacao (Inc.1) ===");
-            logLinha("<num>=anda N | a=1 cel | cd/ce=curva completa | x=esquadro | d/e=gira 90 | v<n>=vies | s=repete | z=rezera");
+            logLinha("<num>=anda | a=1cel | cd/ce=curva | x=esq | r=re | d/e=gira | v=vies | kp/vm/db=centro | s=repete | z=rezera");
         } else {
             server.available().stop();
         }
@@ -100,14 +100,31 @@ void loop() {
             const float d = 0.5f * (encoderDistanciaEsquerdaCm() + encoderDistanciaDireitaCm());
             logLinha(String("[NAVTEST] esquadro: ") + (tocou ? "TOCOU" : "nao tocou")
                      + ", andou " + String(d, 1) + " cm | rumo=" + String(imuLerAnguloZ(), 2) + " deg");
+        } else if (low == "r") {
+            logLinha("[NAVTEST] Andando 1 celula de RE...");
+            navAndarUmaCelula(true);
+            const float d = fabsf(0.5f * (encoderDistanciaEsquerdaCm() + encoderDistanciaDireitaCm()));
+            logLinha(String("[NAVTEST] re: recuou ") + String(d, 1) + " cm | rumo=" + String(imuLerAnguloZ(), 2) + " deg");
         } else if (low == "d") {
             girarELogar('d');
         } else if (low == "e") {
             girarELogar('e');
+        } else if (low.startsWith("kp")) {
+            const float v = bufCmd.substring(2).toFloat();
+            navDefinirCentroKp(v);
+            logLinha(String("[NAVTEST] KP_POS (centro) = ") + String(v, 3));
+        } else if (low.startsWith("vm")) {   // ANTES de "v" (vm começa com v)
+            const float v = bufCmd.substring(2).toFloat();
+            navDefinirCentroViesMax(v);
+            logLinha(String("[NAVTEST] VIES_RUMO_MAX (centro) = ") + String(v, 1) + " graus");
+        } else if (low.startsWith("db")) {
+            const float v = bufCmd.substring(2).toFloat();
+            navDefinirCentroDeadband(v);
+            logLinha(String("[NAVTEST] DEADBAND (centro) = ") + String(v, 1) + " (unid. difC)");
         } else if (low.startsWith("v")) {
             const float vv = bufCmd.substring(1).toFloat();
             navDefinirViesCurva(vv);
-            logLinha(String("[NAVTEST] VIES_CURVA ajustado para ") + String(vv, 1) + " graus");
+            logLinha(String("[NAVTEST] VIES_CURVA (giro) ajustado para ") + String(vv, 1) + " graus");
         } else if (low == "s") {
             andarNCelulas(ultimoN);
         } else if (low == "z") {
@@ -167,7 +184,7 @@ void curvaCompleta(char dir) {
     if (!tocou) { logLinha("[NAVTEST] NAO encostou -> curva CANCELADA."); return; }
     delay(200);
     if (dir == 'd') navGirarDireita(); else navGirarEsquerda();
-    millis(200);
+    delay(200);
     navAndarUmaCelula();
     logLinha(String("[NAVTEST] Curva '") + dir + "' concluida. rumo final="
              + String(imuLerAnguloZ(), 2) + " deg");

@@ -126,8 +126,15 @@ void loop() {
         return;
     }
 
-    // 5. Orienta e avança uma célula.
-    orientarPara(proxima);
-    navAndarUmaCelula();
+    // 5. Move para a próxima célula.
+    uint8_t diff = (proxima - robDir) & 3;
+    if (diff == 2) {
+        // Beco / meia-volta: SAI DE RÉ (não gira 180 no lugar — a frente comprida
+        // varreria a parede lateral). Mantém o rumo; só a posição recua uma célula.
+        navAndarUmaCelula(true);
+    } else {
+        orientarPara(proxima);   // esquadro (se parede à frente) + giro c/ viés
+        navAndarUmaCelula();     // saída: completa o resíduo + centraliza
+    }
     avancarPosicao(proxima);
 }

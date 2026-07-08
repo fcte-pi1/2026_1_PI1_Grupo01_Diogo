@@ -27,7 +27,7 @@ constexpr uint16_t PAREDE_LADO_MM   = 140;
 constexpr uint16_t PARADA_SEGURA_MM = 50;
 
 // --- Velocidades (PWM 0..255) ---
-constexpr int16_t VEL_BASE      = 100;         // cruzeiro na reta (igual ao teste_centralizacao validado; 120 deslizava no freio)
+constexpr int16_t VEL_BASE      = 85;          // cruzeiro na reta (baixado 100->85: + tempo/cm p/ corrigir => menos serpenteio, menos risco de raspar. 120 deslizava no freio)
 constexpr int16_t VEL_CURVA_MAX = 150;         // saturação do giro (validado teste_giro_stress)
 constexpr int16_t VEL_CORRECAO_MAX = 80;       // quanto o PID pode desviar da base na reta
 
@@ -35,6 +35,8 @@ constexpr int16_t VEL_CORRECAO_MAX = 80;       // quanto o PID pode desviar da b
 constexpr int16_t       VEL_MIN_RETA  = 65;    // piso da rampa de decel (atrito do labirinto)
 constexpr float         DECEL_RETA_CM = 8.0f;  // desacelera nos últimos cm
 constexpr unsigned long FREIO_RETA_MS = 250;   // duração do freio ativo (short-brake)
+constexpr int16_t       VEL_ARRANCADA = 70;    // empurrão inicial do cruzeiro (evita giro no lugar na saída)
+constexpr float         RAMPA_RUMO_CM = 8.0f;  // espalha a conclusão do viés na saída nesses cm (curva suave)
 
 // --- Controle ---
 constexpr uint16_t INTERVALO_MS = 10;
@@ -65,8 +67,8 @@ constexpr float KP_CURVA = 5.0f;
 constexpr float KI_CURVA = 8.0f;
 constexpr float KD_CURVA = 0.3f;
 constexpr float LIM_INTEGRAL_CURVA = 15.0f;
-float VIES_CURVA = 9.0f;    // graus que o giro para ANTES do alvo (pra fora). Tunável
-                            // (navDefinirViesCurva) p/ calibrar com a bateria: cheia desliza mais.
+float VIES_CURVA = 11.0f;   // graus que o giro para ANTES do alvo (pra fora). VALIDADO 07/08
+                            // nos 2 lados. Tunável (navDefinirViesCurva) p/ bateria/venue: cheia desliza mais.
 constexpr float PWM_MIN_GIRO = 90.0f;   // piso: vence o atrito estático
 constexpr float GRAUS_DECEL  = 40.0f;   // começa a desacelerar a este erro angular
 constexpr float VEL_GIRO_MIN = 95.0f;   // piso do teto na desaceleração angular
@@ -74,8 +76,8 @@ constexpr float VEL_GIRO_MIN = 95.0f;   // piso do teto na desaceleração angul
 // --- Esquadro por toque (Fase 1 do Plano A): anda até ENCOSTAR na parede ---
 // Toque SUAVE (validado no teste_curva_planoA refatorado): não bate forte.
 constexpr int16_t       PWM_APROX           = 90;   // avanço em direção à parede (longe)
-constexpr int16_t       PWM_TOQUE           = 45;   // creep suave perto da parede
-constexpr int16_t       PWM_CONFIRM         = 80;   // empurrão de confirmação (< APROX: bate menos)
+constexpr int16_t       PWM_TOQUE           = 38;   // creep suave perto da parede (baixado 45->38: bateria cheia batia)
+constexpr int16_t       PWM_CONFIRM         = 70;   // empurrão de confirmação (baixado 80->70: bate menos)
 constexpr uint16_t      TOF_CREEP_MM        = 150;  // ToF frontal < isto -> entra em creep (latch)
 constexpr unsigned long STALL_CONFIRM_MS    = 150;  // parado empurrando -> TOCOU
 constexpr unsigned long ESQUADRO_TIMEOUT_MS = 5000; // não tocou nesse tempo -> desiste
@@ -84,9 +86,11 @@ constexpr unsigned long ESQUADRO_TIMEOUT_MS = 5000; // não tocou nesse tempo ->
 // Validado no teste_centralizacao (07/07). Gate por parede dos 2 lados (dist.
 // CORRIGIDA <= PAREDE_LADO_MM) + sanidade ToF. Sinal: viés < 0 aponta nariz p/ direita.
 constexpr float    DIF_ALVO       = -55.0f;    // (esq_corr - dir_cru) no CENTRO (medido ~-60)
-constexpr float    KP_POS         = 0.10f;     // graus de viés de rumo por unidade de difC
-constexpr float    VIES_RUMO_MAX  = 7.0f;      // teto do viés de rumo (graus)
-constexpr float    DEADBAND_POS   = 10.0f;     // zona morta em unidades de difC (~6 mm), contínua
+// Amaciados 07/08 (serpenteava): a cascata é P puro -> propensa a ciclo-limite.
+// TUNÁVEIS ao vivo (navDefinirCentro*) p/ dialar contra bateria/venue.
+float    KP_POS         = 0.07f;    // graus de viés por unidade de difC (menor=mais suave/lento)
+float    VIES_RUMO_MAX  = 5.0f;     // teto do viés de rumo (graus) (menor=excursões menores)
+float    DEADBAND_POS   = 14.0f;    // zona morta em unid. de difC ~9mm (maior=para de cutucar antes)
 constexpr uint16_t TOF_MIN_VALIDO = 1;         // sanidade ToF: rejeita 0
 constexpr uint16_t TOF_MAX_VALIDO = 2000;      // sanidade ToF: rejeita 8191/lixo/aberto longe
 
@@ -238,8 +242,10 @@ bool navEsquadrar() {
 // Avança uma célula mantendo o rumo (heading-hold) com CENTRALIZAÇÃO EM CASCATA
 // (posição lateral -> viés no setpoint de rumo), desaceleração nos últimos cm e
 // freio ativo no fim. Distância medida pelos encoders. (Portado do teste_centralizacao.)
+// re=true: anda de RÉ (beco/180 — não gira no lugar). Sem parada-segura frontal e
+// com o viés da centralização INVERTIDO (de ré, a mesma inclinação translada oposto).
 // -----------------------------------------------------------------------------
-void navAndarUmaCelula() {
+void navAndarUmaCelula(bool re) {
     PID pidRumo(KP_RETA, KI_RETA, KD_RETA);
     pidRumo.definirLimiteSaida(-VEL_CORRECAO_MAX, VEL_CORRECAO_MAX);
     pidRumo.definirLimiteIntegral(LIM_INTEGRAL_RETA);
@@ -247,6 +253,14 @@ void navAndarUmaCelula() {
 
     encodersZerar();
     const float alvoCm = TAMANHO_CELULA_CM - MARGEM_CELULA_CM;
+
+    // Empurrão inicial: arranca o cruzeiro direto em VEL_ARRANCADA (sem rampar do 0)
+    // pra a correção da largada virar uma CURVA suave, não um giro no lugar (arrancada).
+    motoresIniciarCruzeiro(re ? -VEL_ARRANCADA : VEL_ARRANCADA);
+
+    // Rumo de partida: se veio de um giro (saída), fica ~viés curto do alvo cheio; a
+    // rampa abaixo espalha a conclusão desse resíduo ao longo de RAMPA_RUMO_CM.
+    const float angInicial = imuLerAnguloZ();
 
     unsigned long ultimo = millis();
     unsigned long t0     = millis();
@@ -264,8 +278,9 @@ void navAndarUmaCelula() {
         float dt = (agora - ultimo) / 1000.0f;
         ultimo = agora;
 
-        // Segurança: colidiu / muito perto da parede da frente.
-        if (tofLerDistancia(TOF_FRENTE) <= PARADA_SEGURA_MM) {
+        // Segurança: muito perto da parede da frente. Só no AVANÇO — de ré a parede
+        // da frente é justamente a que ele está deixando pra trás, então ignora.
+        if (!re && tofLerDistancia(TOF_FRENTE) <= PARADA_SEGURA_MM) {
             Serial.println("[NAV] Parada segura (parede a frente).");
             break;
         }
@@ -278,16 +293,17 @@ void navAndarUmaCelula() {
         int32_t encSoma  = encoderLerEsquerdo() + encoderLerDireito();
         int32_t encDelta = encSoma > encAnterior ? encSoma - encAnterior
                                                   : encAnterior - encSoma;
+        int32_t encMag   = encSoma < 0 ? -encSoma : encSoma;   // magnitude (funciona no ré)
         if (encDelta >= STALL_PULSOS_MIN) {
             encAnterior  = encSoma;      // houve progresso: rearma o cronômetro
             ultimoAvanco = agora;
-        } else if (encSoma > STALL_ARM_PULSOS && agora - ultimoAvanco > STALL_MS) {
+        } else if (encMag > STALL_ARM_PULSOS && agora - ultimoAvanco > STALL_MS) {
             Serial.println("[NAV] Stall: encoders parados, encerrando.");
             break;
         }
 
-        // Distância percorrida (média dos dois encoders).
-        float dist = 0.5f * (encoderDistanciaEsquerdaCm() + encoderDistanciaDireitaCm());
+        // Distância percorrida (média dos dois encoders; |...| p/ funcionar no ré).
+        float dist = fabsf(0.5f * (encoderDistanciaEsquerdaCm() + encoderDistanciaDireitaCm()));
         if (dist >= alvoCm) break;
 
         // --- Centralização em CASCATA: erro de posição -> viés no setpoint de rumo ---
@@ -305,10 +321,20 @@ void navAndarUmaCelula() {
             if (viesRumo >  VIES_RUMO_MAX) viesRumo =  VIES_RUMO_MAX;
             if (viesRumo < -VIES_RUMO_MAX) viesRumo = -VIES_RUMO_MAX;
         }
+        // De RÉ, a mesma inclinação de nariz translada o robô pro lado OPOSTO (ele vai
+        // na direção da traseira) -> inverte o viés pra centralização puxar pro certo.
+        if (re) viesRumo = -viesRumo;
 
-        // --- PID de rumo: bússola absoluta + viés da centralização ---
+        // --- Alvo de rumo RAMPADO: espalha a conclusão do viés (de angInicial até o
+        // rumo cheio) ao longo de RAMPA_RUMO_CM -> curva suave e simétrica na saída,
+        // em vez de brusca na largada. Célula já alinhada: angInicial≈alvo -> inócuo.
+        float frac = dist / RAMPA_RUMO_CM;
+        if (frac > 1.0f) frac = 1.0f;
+        const float alvoRampa = angInicial + (anguloAlvoRumo - angInicial) * frac;
+
+        // --- PID de rumo: alvo rampado + viés da centralização ---
         float ang  = imuLerAnguloZ();
-        float erro = (anguloAlvoRumo + viesRumo) - ang;   // >0 => precisa girar à esquerda
+        float erro = (alvoRampa + viesRumo) - ang;   // >0 => precisa girar à esquerda
         float correcao = pidRumo.calcular(erro, dt);
 
         // Perfil de velocidade: desacelera nos últimos DECEL_RETA_CM.
@@ -318,7 +344,7 @@ void navAndarUmaCelula() {
             vel = VEL_MIN_RETA + (int16_t)((VEL_BASE - VEL_MIN_RETA) * (restante / DECEL_RETA_CM));
             if (vel < VEL_MIN_RETA) vel = VEL_MIN_RETA;
         }
-        motoresSetCruzeiro(vel);
+        motoresSetCruzeiro(re ? -vel : vel);
         motoresSetCorrecao((int16_t)correcao);
     }
 
@@ -397,6 +423,11 @@ void navGirarEsquerda()  { navGirarDelta(+90.0f); }  // anti-horário = ângulo 
 void navGirarMeiaVolta() { navGirarDelta(+180.0f); }
 
 void navDefinirViesCurva(float graus) { VIES_CURVA = graus; }
+
+// Calibração ao vivo da centralização (cascata). Ver navegacao.h.
+void navDefinirCentroKp(float v)       { KP_POS = v; }
+void navDefinirCentroViesMax(float v)  { VIES_RUMO_MAX = v; }
+void navDefinirCentroDeadband(float v) { DEADBAND_POS = v; }
 
 void navParar() {
     motoresParar();

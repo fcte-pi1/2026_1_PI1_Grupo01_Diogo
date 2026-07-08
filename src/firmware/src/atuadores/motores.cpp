@@ -213,6 +213,16 @@ void motoresSetCruzeiro(int16_t base) {
     cruzeiroAlvo = limitarVelocidade(base);
 }
 
+// Arranca o cruzeiro DIRETO em 'base' (sem rampar do 0). Usado na saída da curva:
+// com o cruzeiro em 0 na largada, a correção imediata do PID (ex.: completar o viés)
+// jogaria uma roda pra trás -> giro no lugar. Arrancando em ~70, as duas rodas ficam
+// pra frente e a correção vira uma curva suave (não "senta-e-pula").
+void motoresIniciarCruzeiro(int16_t base) {
+    modoCruzeiro  = true;
+    cruzeiroAlvo  = limitarVelocidade(base);
+    cruzeiroAtual = cruzeiroAlvo;   // pula a rampa 0->base
+}
+
 void motoresSetCorrecao(int16_t correcao) {
     modoCruzeiro = true;
     correcaoAtual = correcao;
