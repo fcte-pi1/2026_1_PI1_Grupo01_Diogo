@@ -25,7 +25,11 @@ bool navParedeEsquerda();
 bool navParedeDireita();
 
 // --- Primitivas de movimento (bloqueantes) ---
-void navAndarUmaCelula(bool re = false);  // avança 1 célula (re=true: anda de RÉ, p/ beco/180)
+// avança 1 célula (re=true: anda de RÉ, p/ beco/180). Retorna true se CHEGOU (andou
+// ~a célula inteira); false se parou curto (stall/timeout/jam) — nesse caso o chamador
+// NÃO deve avançar a posição lógica, sob risco de dessincronizar o mapa.
+// cmPercorrido (opcional): recebe a distância medida em cm (módulo), p/ log.
+bool navAndarUmaCelula(bool re = false, float* cmPercorrido = nullptr);
 bool navEsquadrar();        // anda até TOCAR a parede da frente (esquadra); true se encostou
 void navGirarDireita();     // gira -90° (horário)
 void navGirarEsquerda();    // gira +90° (anti-horário)

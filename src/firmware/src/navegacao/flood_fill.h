@@ -18,7 +18,7 @@
 // -----------------------------------------------------------------------------
 
 #ifndef MAZE_N
-#define MAZE_N 4          // tamanho do labirinto (NxN). Mude aqui se necessário.
+#define MAZE_N 8          // tamanho do labirinto (NxN). Mude aqui se necessário.
 #endif
 
 // Direções absolutas (bússola). A ORDEM importa:
