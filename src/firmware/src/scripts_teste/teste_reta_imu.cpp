@@ -22,8 +22,8 @@
 
 // --- Wi-Fi (opcional; se falhar, cai pra Serial e segue funcionando) ---
 const bool     WIFI_ATIVA     = true;
-const char*    WIFI_SSID      = "VIVOFIBRA-8681";    // <-- coloque o nome da rede/hotspot
-const char*    WIFI_PASS      = "DSCBCkm8r3";   // <-- coloque a senha
+const char*    WIFI_SSID       = "Vilbs";
+const char*    WIFI_PASS       = "12345678";
 const uint16_t WIFI_PORTA     = 8080;
 const uint32_t WIFI_TIMEOUT_MS = 8000;
 WiFiServer server(WIFI_PORTA);
@@ -36,7 +36,8 @@ const uint16_t INTERVALO_MS      = 10;     // período do controle
 const uint32_t TIMEOUT_MS        = 8000;   // segurança: aborta se demorar demais
 
 // --- Desaceleração + freio ativo (mata o coast/inércia no fim) ---
-const int16_t  VEL_MIN   = 50;     // piso do cruzeiro ao desacelerar
+const int16_t  VEL_MIN   = 65;     // piso do cruzeiro ao desacelerar (subido de 50:
+                                   // atrito novo/tinta raspada travava no fim)
 const float    DECEL_CM  = 8.0f;   // desacelera nos últimos N cm antes do alvo
 const uint32_t FREIO_MS  = 250;    // duração do short-brake no fim
 

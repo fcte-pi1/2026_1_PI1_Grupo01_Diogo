@@ -6,7 +6,6 @@
 #include "atuadores/motores.h"
 #include "navegacao/navegacao.h"
 #include "navegacao/flood_fill.h"
-#include "comunicacao/telemetria.h"
 
 // =============================================================================
 // MICROMOUSE — Navegação por FLOOD FILL com movimento controlado por PID.
@@ -31,9 +30,6 @@ uint8_t  robY = 0;
 Direcao  robDir = NORTE;
 
 bool concluido = false;
-
-// Marco de tempo do início da corrida (para tempo_corrida_ms na telemetria).
-uint32_t inicioCorridaMs = 0;
 
 // Converte direção relativa (frente/esq/dir) do robô em direção absoluta.
 static inline Direcao dirFrente(Direcao h)  { return h; }
@@ -60,11 +56,16 @@ static void registrarParedes() {
 // Gira o robô (física + estado lógico) para a direção absoluta desejada.
 static void orientarPara(Direcao destino) {
     uint8_t diff = (destino - robDir) & 3;
-    switch (diff) {
-        case 0: /* já está de frente */          break;
-        case 1: navGirarDireita();               break;
-        case 2: navGirarMeiaVolta();             break;
-        case 3: navGirarEsquerda();              break;
+    if (diff != 0) {
+        // Plano A: se há parede À FRENTE (junção L/T), esquadra ANTES de girar —
+        // encosta na parede -> esquadra o rumo + minimiza o offset do eixo -> a
+        // roda traseira não raspa. Em cruzamento aberto, gira direto (giro limpo).
+        if (navParedeFrente()) navEsquadrar();
+        switch (diff) {
+            case 1: navGirarDireita();   break;
+            case 2: navGirarMeiaVolta(); break;   // 180: Inc.4 troca por sair de ré
+            case 3: navGirarEsquerda();  break;
+        }
     }
     robDir = destino;
 }
@@ -86,13 +87,8 @@ void setup() {
     labirinto.iniciar();              // paredes zeradas + moldura + objetivo central
     navZerarRumo();
 
-    // Sobe a telemetria (Wi-Fi + WebSocket) numa task no Core 0. A navegação
-    // segue no loop() (Core 1) sem ser travada pela rede.
-    telemetriaInit();
-
     Serial.println("=== PRONTO: coloque o robô em (0,0) olhando p/ NORTE ===");
     delay(2000);
-    inicioCorridaMs = millis();       // zera o cronômetro da corrida
 }
 
 void loop() {
@@ -112,19 +108,12 @@ void loop() {
     Serial.printf("[POS] (%u,%u) rumo=%u  dist=%u\n",
                   robX, robY, robDir, labirinto.distancia(robX, robY));
 
-    // Telemetria da célula atual (estado normal de exploração).
-    telemetriaAtualizar(millis() - inicioCorridaMs, robX, robY, robDir,
-                        "EXPLORANDO");
-
     // 3. Chegou ao centro?
     if (labirinto.ehObjetivo(robX, robY)) {
         Serial.println("=== OBJETIVO ALCANCADO! ===");
         labirinto.imprimirSerial();
         navParar();
         concluido = true;
-        // Estado terminal → backend finaliza a corrida como CONCLUIDA.
-        telemetriaAtualizar(millis() - inicioCorridaMs, robX, robY, robDir,
-                            "OBJETIVO_ENCONTRADO");
         return;
     }
 
@@ -134,14 +123,18 @@ void loop() {
         Serial.println("[MAIN] Preso: nenhuma direção válida.");
         navParar();
         concluido = true;
-        // Estado terminal → backend finaliza a corrida como NAO_CONCLUIDA.
-        telemetriaAtualizar(millis() - inicioCorridaMs, robX, robY, robDir,
-                            "ERRO");
         return;
     }
 
-    // 5. Orienta e avança uma célula.
-    orientarPara(proxima);
-    navAndarUmaCelula();
+    // 5. Move para a próxima célula.
+    uint8_t diff = (proxima - robDir) & 3;
+    if (diff == 2) {
+        // Beco / meia-volta: SAI DE RÉ (não gira 180 no lugar — a frente comprida
+        // varreria a parede lateral). Mantém o rumo; só a posição recua uma célula.
+        navAndarUmaCelula(true);
+    } else {
+        orientarPara(proxima);   // esquadro (se parede à frente) + giro c/ viés
+        navAndarUmaCelula();     // saída: completa o resíduo + centraliza
+    }
     avancarPosicao(proxima);
 }

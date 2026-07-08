@@ -36,6 +36,7 @@ void motorParar(MotorId motor);
 // Chamar qualquer um destes ativa o modo cruzeiro.
 // -----------------------------------------------------------------------------
 void motoresSetCruzeiro(int16_t base);       // velocidade de avanço comum (rampeada)
+void motoresIniciarCruzeiro(int16_t base);   // arranca o cruzeiro DIRETO em base (sem rampar do 0)
 void motoresSetCorrecao(int16_t correcao);   // diferencial imediato (PID)
 
 // Para ambos os modos: zera cruzeiro, correcao e alvos por-motor.
