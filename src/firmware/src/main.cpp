@@ -56,11 +56,16 @@ static void registrarParedes() {
 // Gira o robô (física + estado lógico) para a direção absoluta desejada.
 static void orientarPara(Direcao destino) {
     uint8_t diff = (destino - robDir) & 3;
-    switch (diff) {
-        case 0: /* já está de frente */          break;
-        case 1: navGirarDireita();               break;
-        case 2: navGirarMeiaVolta();             break;
-        case 3: navGirarEsquerda();              break;
+    if (diff != 0) {
+        // Plano A: se há parede À FRENTE (junção L/T), esquadra ANTES de girar —
+        // encosta na parede -> esquadra o rumo + minimiza o offset do eixo -> a
+        // roda traseira não raspa. Em cruzamento aberto, gira direto (giro limpo).
+        if (navParedeFrente()) navEsquadrar();
+        switch (diff) {
+            case 1: navGirarDireita();   break;
+            case 2: navGirarMeiaVolta(); break;   // 180: Inc.4 troca por sair de ré
+            case 3: navGirarEsquerda();  break;
+        }
     }
     robDir = destino;
 }

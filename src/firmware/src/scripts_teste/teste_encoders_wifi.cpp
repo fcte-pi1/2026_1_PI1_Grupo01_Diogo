@@ -23,8 +23,8 @@
 //   Comando: z = zera os contadores
 // =============================================================================
 
-const char*    WIFI_SSID = "iPhone";    // <-- nome da rede/hotspot
-const char*    WIFI_PASS = "06543210";   // <-- senha
+const char*    WIFI_SSID       = "iPhone";
+const char*    WIFI_PASS       = "06543210";
 IPAddress      IP_ESTATICO(172, 20, 10, 5);   // <-- CONECTE SEMPRE NESTE IP
 IPAddress      GATEWAY    (172, 20, 10, 1);
 IPAddress      SUBNET     (255, 255, 255, 240);
