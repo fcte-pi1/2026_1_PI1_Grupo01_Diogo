@@ -79,6 +79,7 @@ constexpr int16_t       PWM_APROX           = 90;   // avanço em direção à p
 constexpr int16_t       PWM_TOQUE           = 38;   // creep suave perto da parede (baixado 45->38: bateria cheia batia)
 constexpr int16_t       PWM_CONFIRM         = 70;   // empurrão de confirmação (baixado 80->70: bate menos)
 constexpr uint16_t      TOF_CREEP_MM        = 150;  // ToF frontal < isto -> entra em creep (latch)
+constexpr uint16_t      TOF_DECEL_MM        = 350;  // acima do creep: desacelera a aproximacao (PWM_APROX->PWM_TOQUE) p/ nao bater forte vindo de longe
 constexpr unsigned long STALL_CONFIRM_MS    = 150;  // parado empurrando -> TOCOU
 constexpr unsigned long ESQUADRO_TIMEOUT_MS = 5000; // não tocou nesse tempo -> desiste
 
@@ -107,6 +108,30 @@ int16_t limitar(int16_t v, int16_t lo, int16_t hi) {
 
 // Sanidade do ToF: rejeita 0 e códigos de erro/lixo (8191, >2000 mm).
 inline bool tofValido(uint16_t v) { return v >= TOF_MIN_VALIDO && v <= TOF_MAX_VALIDO; }
+
+// Leitura de parede robusta (Inc 5a): tira N amostras frescas (ToF em modo
+// contínuo bloqueia até ter dado novo), descarta as inválidas (0/8191/>2000 —
+// o glitch esporádico da direita, HANDOFF §8) e devolve a MEDIANA das válidas.
+// Imune ao valor falso isolado. Se NENHUMA for válida (falha persistente),
+// devolve UINT16_MAX -> tratado como "sem parede" (não inventa parede fantasma,
+// que travaria o flood fill; um falso-aberto ainda tem os backstops físicos da
+// primitiva: parada-segura frontal + stall).
+uint16_t tofDistanciaParede(int idx) {
+    constexpr int N = 5;
+    uint16_t v[N];
+    int n = 0;
+    for (int i = 0; i < N; i++) {
+        uint16_t d = tofLerDistancia(idx);
+        if (tofValido(d)) v[n++] = d;
+    }
+    if (n == 0) return UINT16_MAX;
+    for (int i = 1; i < n; i++) {          // insertion sort (n <= 5)
+        uint16_t k = v[i]; int j = i - 1;
+        while (j >= 0 && v[j] > k) { v[j + 1] = v[j]; j--; }
+        v[j + 1] = k;
+    }
+    return v[n / 2];
+}
 
 // Freio ATIVO (short-brake): curto-circuita os motores pra matar a inércia de
 // vez, espera assentar e libera. Usar já EM BAIXA velocidade (após a decel).
@@ -141,18 +166,9 @@ void navZerarRumo() {
 // -----------------------------------------------------------------------------
 // Leitura de paredes (relativo ao robô)
 // -----------------------------------------------------------------------------
-bool navParedeFrente() {
-    uint16_t d = tofLerDistancia(TOF_FRENTE);
-    return (d <= PAREDE_FRENTE_MM);
-}
-bool navParedeEsquerda() {
-    uint16_t d = tofLerDistancia(TOF_ESQUERDA);
-    return (d <= PAREDE_LADO_MM);
-}
-bool navParedeDireita() {
-    uint16_t d = tofLerDistancia(TOF_DIREITA);
-    return (d <= PAREDE_LADO_MM);
-}
+bool navParedeFrente()   { return tofDistanciaParede(TOF_FRENTE)   <= PAREDE_FRENTE_MM; }
+bool navParedeEsquerda() { return tofDistanciaParede(TOF_ESQUERDA) <= PAREDE_LADO_MM;   }
+bool navParedeDireita()  { return tofDistanciaParede(TOF_DIREITA)  <= PAREDE_LADO_MM;   }
 
 // -----------------------------------------------------------------------------
 // FASE 1 do Plano A: anda pra frente (heading-hold + centralização) até TOCAR a
@@ -227,7 +243,19 @@ bool navEsquadrar() {
         // andado (garante breakaway). No stall suspeito, empurra em PWM_CONFIRM.
         const uint16_t df = tofLerDistancia(TOF_FRENTE);
         if (df > 0 && df < TOF_CREEP_MM && encSoma > STALL_ARM_PULSOS) emCreep = true;
-        int16_t vel = emCreep ? PWM_TOQUE : PWM_APROX;
+        // Velocidade de aproximacao: no creep = toque suave; entre TOF_DECEL_MM e
+        // TOF_CREEP_MM desacelera de PWM_APROX ate PWM_TOQUE (chega devagar mesmo
+        // vindo de longe -> nao bate forte); acima disso = PWM_APROX cheio.
+        int16_t vel;
+        if (emCreep) {
+            vel = PWM_TOQUE;
+        } else if (df > 0 && df < TOF_DECEL_MM) {
+            float frac = (float)(df - TOF_CREEP_MM) / (float)(TOF_DECEL_MM - TOF_CREEP_MM);
+            if (frac < 0.0f) frac = 0.0f;
+            vel = PWM_TOQUE + (int16_t)((PWM_APROX - PWM_TOQUE) * frac);
+        } else {
+            vel = PWM_APROX;
+        }
         if (suspeito) vel = PWM_CONFIRM;
 
         motoresSetCruzeiro(vel);
@@ -235,6 +263,12 @@ bool navEsquadrar() {
     }
 
     frearAtivo();
+
+    // Re-referência física do rumo (Inc 5c): se ENCOSTOU, o toque assenta o robô
+    // esquadrado na parede -> rumo físico conhecido. Reancorar a bússola aqui zera
+    // a deriva acumulada da IMU a cada junção (bounda por corredor, não deixa
+    // acumular no labirinto). Só se tocou — timeout não dá referência confiável.
+    if (tocou) navZerarRumo();
     return tocou;
 }
 
