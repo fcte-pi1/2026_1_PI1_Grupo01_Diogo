@@ -36,12 +36,16 @@ WiFiClient client;
 
 int ultimoN = 1;
 
+// Índices dos ToF (confirmados no HANDOFF §3: 0=frente, 1=esquerda, 2=direita).
+static const int TOF_FRENTE = 0, TOF_ESQUERDA = 1, TOF_DIREITA = 2;
+
 void      conectarWiFi();
 bool      lerComando(char& c);
 void      logLinha(const String& s);
 void      andarNCelulas(int n);
 void      girarELogar(char dir);
 void      curvaCompleta(char dir);
+void      paredesLog();
 
 void setup() {
     Serial.begin(115200);
@@ -63,7 +67,7 @@ void setup() {
     navZerarRumo();   // bússola de referência = rumo atual (0 após zerar o IMU)
 
     conectarWiFi();
-    logLinha("[NAVTEST] Pronto. <num>=anda | a=1cel | cd/ce=curva | x=esq | r=re | d/e=gira | v=vies | kp/vm/db=centro | s=repete | z=rezera");
+    logLinha("[NAVTEST] Pronto. <num>=anda | a=1cel | cd/ce=curva | x=esq | w=paredes | r=re | d/e=gira | v=vies | kp/vm/db=centro | s=repete | z=rezera");
 }
 
 void loop() {
@@ -72,7 +76,7 @@ void loop() {
             if (client) client.stop();
             client = server.available();
             logLinha("=== Conectado a bancada de navegacao (Inc.1) ===");
-            logLinha("<num>=anda | a=1cel | cd/ce=curva | x=esq | r=re | d/e=gira | v=vies | kp/vm/db=centro | s=repete | z=rezera");
+            logLinha("<num>=anda | a=1cel | cd/ce=curva | x=esq | w=paredes | r=re | d/e=gira | v=vies | kp/vm/db=centro | s=repete | z=rezera");
         } else {
             server.available().stop();
         }
@@ -100,6 +104,8 @@ void loop() {
             const float d = 0.5f * (encoderDistanciaEsquerdaCm() + encoderDistanciaDireitaCm());
             logLinha(String("[NAVTEST] esquadro: ") + (tocou ? "TOCOU" : "nao tocou")
                      + ", andou " + String(d, 1) + " cm | rumo=" + String(imuLerAnguloZ(), 2) + " deg");
+        } else if (low == "w") {
+            paredesLog();
         } else if (low == "r") {
             logLinha("[NAVTEST] Andando 1 celula de RE...");
             navAndarUmaCelula(true);
@@ -188,6 +194,29 @@ void curvaCompleta(char dir) {
     navAndarUmaCelula();
     logLinha(String("[NAVTEST] Curva '") + dir + "' concluida. rumo final="
              + String(imuLerAnguloZ(), 2) + " deg");
+}
+
+// Valida a PERCEPÇÃO de parede (filtro do Inc 5a) com o robô PARADO num cruzamento.
+// 1) Varredura CRUA (instantânea) dos 3 ToF por ~1,5 s -> você vê o glitch da direita
+//    ao vivo (ela cospe 0/8190 esporádico).
+// 2) DECISÃO filtrada (navParedeFrente/Esquerda/Direita), que usa a mediana de
+//    amostras válidas -> deve ficar ESTÁVEL e certa mesmo se a leitura crua piscar.
+void paredesLog() {
+    logLinha("[NAVTEST] Varredura CRUA (10x) - frente | esq_corr | dir_corr | dir_bruta:");
+    for (int i = 0; i < 10; i++) {
+        const uint16_t f  = tofLerDistancia(TOF_FRENTE);
+        const uint16_t e  = tofLerDistancia(TOF_ESQUERDA);
+        const uint16_t d  = tofLerDistancia(TOF_DIREITA);
+        const uint16_t db = tofLerDistanciaBruta(TOF_DIREITA);
+        logLinha(String("   f=") + f + "  e=" + e + "  d=" + d + "  d_bruta=" + db + " mm");
+        delay(120);
+    }
+    const bool pf = navParedeFrente();
+    const bool pe = navParedeEsquerda();
+    const bool pd = navParedeDireita();
+    logLinha(String("[NAVTEST] DECISAO (filtrada): frente=") + (pf ? "PAREDE" : "livre")
+             + " | esq=" + (pe ? "PAREDE" : "livre")
+             + " | dir=" + (pd ? "PAREDE" : "livre"));
 }
 
 bool lerComando(char& c) {

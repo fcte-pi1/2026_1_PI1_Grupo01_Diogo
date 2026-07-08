@@ -15,6 +15,7 @@ namespace {
 // --- Geometria ---
 constexpr float   TAMANHO_CELULA_CM = 18.0f;   // pitch: quanto o robô anda por célula (16,8 é a largura interna)
 constexpr float   MARGEM_CELULA_CM  = 2.4f;    // para o motor antes do alvo p/ o deslize do freio completar os 18 cm (piso liso)
+constexpr float   FRACAO_CELULA_OK  = 0.7f;    // andou < isto do alvo => movimento incompleto (jam/stall), NÃO conta como célula
 
 // --- Índices dos sensores ToF (confira com o env teste_tof!) ---
 constexpr int     TOF_FRENTE   = 0;
@@ -79,7 +80,6 @@ constexpr int16_t       PWM_APROX           = 90;   // avanço em direção à p
 constexpr int16_t       PWM_TOQUE           = 38;   // creep suave perto da parede (baixado 45->38: bateria cheia batia)
 constexpr int16_t       PWM_CONFIRM         = 70;   // empurrão de confirmação (baixado 80->70: bate menos)
 constexpr uint16_t      TOF_CREEP_MM        = 150;  // ToF frontal < isto -> entra em creep (latch)
-constexpr uint16_t      TOF_DECEL_MM        = 350;  // acima do creep: desacelera a aproximacao (PWM_APROX->PWM_TOQUE) p/ nao bater forte vindo de longe
 constexpr unsigned long STALL_CONFIRM_MS    = 150;  // parado empurrando -> TOCOU
 constexpr unsigned long ESQUADRO_TIMEOUT_MS = 5000; // não tocou nesse tempo -> desiste
 
@@ -110,19 +110,26 @@ int16_t limitar(int16_t v, int16_t lo, int16_t hi) {
 inline bool tofValido(uint16_t v) { return v >= TOF_MIN_VALIDO && v <= TOF_MAX_VALIDO; }
 
 // Leitura de parede robusta (Inc 5a): tira N amostras frescas (ToF em modo
-// contínuo bloqueia até ter dado novo), descarta as inválidas (0/8191/>2000 —
-// o glitch esporádico da direita, HANDOFF §8) e devolve a MEDIANA das válidas.
-// Imune ao valor falso isolado. Se NENHUMA for válida (falha persistente),
-// devolve UINT16_MAX -> tratado como "sem parede" (não inventa parede fantasma,
-// que travaria o flood fill; um falso-aberto ainda tem os backstops físicos da
-// primitiva: parada-segura frontal + stall).
+// contínuo bloqueia até ter dado novo) e devolve a MEDIANA. Tratamento por valor:
+//   - 0        = lixo/erro real -> DESCARTA a amostra.
+//   - >2000    = 8190/8191 "sem alvo no alcance" = LADO ABERTO (informação válida!)
+//                -> satura em TOF_MAX_VALIDO e MANTÉM, virando um voto de "longe/livre".
+//   - normal   -> mantém.
+// Por que não descartar o 8191: num lado aberto ele domina as leituras; se a gente
+// descartasse, uma única leitura baixa espúria (reflexo/crosstalk) viraria a mediana
+// das poucas restantes -> PAREDE FANTASMA. Mantendo os "longe" como votos, o pico
+// baixo isolado é derrotado por maioria. Se SÓ vier lixo (tudo 0), devolve UINT16_MAX
+// -> "sem parede" (não inventa parede que travaria o flood fill; falso-aberto ainda
+// tem os backstops físicos: parada-segura frontal + stall).
 uint16_t tofDistanciaParede(int idx) {
     constexpr int N = 5;
     uint16_t v[N];
     int n = 0;
     for (int i = 0; i < N; i++) {
         uint16_t d = tofLerDistancia(idx);
-        if (tofValido(d)) v[n++] = d;
+        if (d == 0) continue;                        // 0 = lixo/erro: descarta
+        if (d > TOF_MAX_VALIDO) d = TOF_MAX_VALIDO;  // 8190/8191/longe = "sem parede": satura (vira voto de 'livre')
+        v[n++] = d;
     }
     if (n == 0) return UINT16_MAX;
     for (int i = 1; i < n; i++) {          // insertion sort (n <= 5)
@@ -243,19 +250,7 @@ bool navEsquadrar() {
         // andado (garante breakaway). No stall suspeito, empurra em PWM_CONFIRM.
         const uint16_t df = tofLerDistancia(TOF_FRENTE);
         if (df > 0 && df < TOF_CREEP_MM && encSoma > STALL_ARM_PULSOS) emCreep = true;
-        // Velocidade de aproximacao: no creep = toque suave; entre TOF_DECEL_MM e
-        // TOF_CREEP_MM desacelera de PWM_APROX ate PWM_TOQUE (chega devagar mesmo
-        // vindo de longe -> nao bate forte); acima disso = PWM_APROX cheio.
-        int16_t vel;
-        if (emCreep) {
-            vel = PWM_TOQUE;
-        } else if (df > 0 && df < TOF_DECEL_MM) {
-            float frac = (float)(df - TOF_CREEP_MM) / (float)(TOF_DECEL_MM - TOF_CREEP_MM);
-            if (frac < 0.0f) frac = 0.0f;
-            vel = PWM_TOQUE + (int16_t)((PWM_APROX - PWM_TOQUE) * frac);
-        } else {
-            vel = PWM_APROX;
-        }
+        int16_t vel = emCreep ? PWM_TOQUE : PWM_APROX;
         if (suspeito) vel = PWM_CONFIRM;
 
         motoresSetCruzeiro(vel);
@@ -279,7 +274,7 @@ bool navEsquadrar() {
 // re=true: anda de RÉ (beco/180 — não gira no lugar). Sem parada-segura frontal e
 // com o viés da centralização INVERTIDO (de ré, a mesma inclinação translada oposto).
 // -----------------------------------------------------------------------------
-void navAndarUmaCelula(bool re) {
+bool navAndarUmaCelula(bool re, float* cmPercorrido) {
     PID pidRumo(KP_RETA, KI_RETA, KD_RETA);
     pidRumo.definirLimiteSaida(-VEL_CORRECAO_MAX, VEL_CORRECAO_MAX);
     pidRumo.definirLimiteIntegral(LIM_INTEGRAL_RETA);
@@ -383,6 +378,12 @@ void navAndarUmaCelula(bool re) {
     }
 
     frearAtivo();
+
+    // Feedback de sucesso: quanto andou de fato. Movimento normal completa ~alvoCm;
+    // jam/stall/timeout param bem antes. Retorna se CHEGOU (>= FRACAO_CELULA_OK do alvo).
+    const float andou = fabsf(0.5f * (encoderDistanciaEsquerdaCm() + encoderDistanciaDireitaCm()));
+    if (cmPercorrido) *cmPercorrido = andou;
+    return andou >= alvoCm * FRACAO_CELULA_OK;
 }
 
 // -----------------------------------------------------------------------------

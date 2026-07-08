@@ -1,4 +1,5 @@
 #include <Arduino.h>
+#include <WiFi.h>
 #include "config/pinos.h"
 #include "sensores/i2c_bus.h"
 #include "sensores/tof.h"
@@ -30,6 +31,18 @@ uint8_t  robY = 0;
 Direcao  robDir = NORTE;
 
 bool concluido = false;
+bool iniciado  = false;   // trava de largada: só anda depois do comando 'g'
+
+// --- Telemetria WiFi (mesma rede da bancada teste_navegacao) ---
+const char*    WIFI_SSID  = "iPhone";
+const char*    WIFI_PASS  = "06543210";
+const uint16_t WIFI_PORTA = 8080;
+WiFiServer server(WIFI_PORTA);
+WiFiClient client;
+
+void conectarWiFi();
+void logLinha(const String& s);
+bool lerComando(char& c);
 
 // Converte direção relativa (frente/esq/dir) do robô em direção absoluta.
 static inline Direcao dirFrente(Direcao h)  { return h; }
@@ -60,7 +73,9 @@ static void orientarPara(Direcao destino) {
         // Plano A: se há parede À FRENTE (junção L/T), esquadra ANTES de girar —
         // encosta na parede -> esquadra o rumo + minimiza o offset do eixo -> a
         // roda traseira não raspa. Em cruzamento aberto, gira direto (giro limpo).
-        if (navParedeFrente()) navEsquadrar();
+        if (navParedeFrente()) {
+            if (!navEsquadrar()) logLinha("[MAIN] AVISO: esquadro nao tocou a parede da frente.");
+        }
         switch (diff) {
             case 1: navGirarDireita();   break;
             case 2: navGirarMeiaVolta(); break;   // 180: Inc.4 troca por sair de ré
@@ -77,7 +92,7 @@ void setup() {
     i2cInit();
 
     if (!imuInit())     { Serial.println("[MAIN] ERRO: IMU.");    while (true); }
-    imuCalibrarOffsetZ(250);
+    imuCalibrarOffsetZ(500);   // 500 = offset do giro menos ruidoso (casa com a bancada)
     imuZerarAnguloZ();
 
     if (!tofInit())     { Serial.println("[MAIN] ERRO: ToF.");    while (true); }
@@ -87,11 +102,43 @@ void setup() {
     labirinto.iniciar();              // paredes zeradas + moldura + objetivo central
     navZerarRumo();
 
-    Serial.println("=== PRONTO: coloque o robô em (0,0) olhando p/ NORTE ===");
-    delay(2000);
+    conectarWiFi();
+    logLinha("=== PRONTO: robo em (0,0) olhando NORTE. Envie 'g' para INICIAR. ===");
 }
 
 void loop() {
+    // Aceita/atualiza o cliente de telemetria (nc <IP> 8080).
+    if (server.hasClient()) {
+        if (!client || !client.connected()) {
+            if (client) client.stop();
+            client = server.available();
+            logLinha("=== Conectado. 'g' inicia a corrida | 'p' para. ===");
+        } else {
+            server.available().stop();   // já tem cliente: recusa o segundo
+        }
+    }
+
+    // Comandos: 'g' inicia a corrida; 'p' para (só surte efeito ENTRE movimentos —
+    // as primitivas são bloqueantes, então o 'p' fica no buffer e é lido ao fim da
+    // célula atual; latência de ~1 célula. E-stop imediato fica p/ a opção 2).
+    char c;
+    while (lerComando(c)) {
+        if ((c == 'g' || c == 'G') && !iniciado) {
+            iniciado = true;
+            logLinha("=== INICIANDO CORRIDA ===");
+        } else if ((c == 'p' || c == 'P') && iniciado && !concluido) {
+            logLinha("=== PARADO pelo 'p'. Reset p/ rodar de novo. ===");
+            navParar();
+            concluido = true;
+        }
+    }
+
+    // Trava de largada: o robô fica PARADO até você mandar 'g'.
+    if (!iniciado) {
+        delay(20);
+        return;
+    }
+
     if (concluido) {
         navParar();
         motoresAtualizar();
@@ -105,13 +152,17 @@ void loop() {
     // 2. Recalcula distâncias até o objetivo.
     labirinto.calcular();
 
-    Serial.printf("[POS] (%u,%u) rumo=%u  dist=%u\n",
-                  robX, robY, robDir, labirinto.distancia(robX, robY));
+    {
+        char buf[96];
+        snprintf(buf, sizeof(buf), "[POS] (%u,%u) rumo=%u  dist=%u",
+                 robX, robY, robDir, labirinto.distancia(robX, robY));
+        logLinha(buf);
+    }
 
     // 3. Chegou ao centro?
     if (labirinto.ehObjetivo(robX, robY)) {
-        Serial.println("=== OBJETIVO ALCANCADO! ===");
-        labirinto.imprimirSerial();
+        logLinha("=== OBJETIVO ALCANCADO! ===");
+        labirinto.imprimirSerial();   // mapa de distâncias (só Serial)
         navParar();
         concluido = true;
         return;
@@ -120,7 +171,7 @@ void loop() {
     // 4. Decide o próximo passo pelo flood fill.
     Direcao proxima;
     if (!labirinto.melhorDirecao(robX, robY, robDir, proxima)) {
-        Serial.println("[MAIN] Preso: nenhuma direção válida.");
+        logLinha("[MAIN] Preso: nenhuma direcao valida.");
         navParar();
         concluido = true;
         return;
@@ -128,13 +179,68 @@ void loop() {
 
     // 5. Move para a próxima célula.
     uint8_t diff = (proxima - robDir) & 3;
+    float cm = 0.0f;
+    bool ok;
     if (diff == 2) {
         // Beco / meia-volta: SAI DE RÉ (não gira 180 no lugar — a frente comprida
         // varreria a parede lateral). Mantém o rumo; só a posição recua uma célula.
-        navAndarUmaCelula(true);
+        ok = navAndarUmaCelula(true, &cm);
     } else {
-        orientarPara(proxima);   // esquadro (se parede à frente) + giro c/ viés
-        navAndarUmaCelula();     // saída: completa o resíduo + centraliza
+        orientarPara(proxima);            // esquadro (se parede à frente) + giro c/ viés
+        ok = navAndarUmaCelula(false, &cm); // saída: completa o resíduo + centraliza
+    }
+    {
+        char buf[96];
+        snprintf(buf, sizeof(buf), "[MOV] %s andou %.1f cm | rumo %.1f deg%s",
+                 (diff == 2) ? "re" : "frente", cm, imuLerAnguloZ(), ok ? "" : "  <<< CURTO");
+        logLinha(buf);
+    }
+
+    // Sem feedback de sucesso, um movimento incompleto (stall/jam) dessincronizaria o
+    // mapa em silêncio. Melhor PARAR com diagnóstico do que decidir errado em cascata.
+    if (!ok) {
+        logLinha("[MAIN] Movimento incompleto -> parando p/ nao dessincronizar o mapa.");
+        navParar();
+        concluido = true;
+        return;                           // NÃO avança a posição lógica
     }
     avancarPosicao(proxima);
+}
+
+// -----------------------------------------------------------------------------
+// Telemetria WiFi
+// -----------------------------------------------------------------------------
+void conectarWiFi() {
+    Serial.printf("[MAIN] Conectando em \"%s\" (DHCP) ...\n", WIFI_SSID);
+    WiFi.mode(WIFI_STA);
+    WiFi.setSleep(false);
+    WiFi.begin(WIFI_SSID, WIFI_PASS);
+    uint32_t t0 = millis();
+    while (WiFi.status() != WL_CONNECTED && millis() - t0 < 8000) {
+        delay(300);
+        Serial.print(".");
+    }
+    if (WiFi.status() == WL_CONNECTED) {
+        Serial.printf("\n[MAIN] Wi-Fi OK. Conecte em  %s:%u\n",
+                      WiFi.localIP().toString().c_str(), WIFI_PORTA);
+        server.begin();
+    } else {
+        Serial.println("\n[MAIN] Wi-Fi FALHOU. Da p/ iniciar pelo Serial ('g') mesmo assim.");
+    }
+}
+
+// Manda a linha pra Serial E pro cliente WiFi (se houver).
+void logLinha(const String& s) {
+    Serial.println(s);
+    if (client && client.connected()) client.println(s);
+}
+
+// Lê 1 caractere do Serial ou do cliente WiFi. true se leu algo.
+bool lerComando(char& c) {
+    if (Serial.available() > 0) { c = (char)Serial.read(); return true; }
+    if (client && client.connected() && client.available() > 0) {
+        c = (char)client.read();
+        return true;
+    }
+    return false;
 }
