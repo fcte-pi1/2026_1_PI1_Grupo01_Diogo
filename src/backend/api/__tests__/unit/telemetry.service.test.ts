@@ -260,6 +260,179 @@ describe("TelemetryService.save()", () => {
 });
 
 // ============================================================
+// Encerramento manual da corrida (G1) + agregados (G6)
+// ============================================================
+describe("TelemetryService.finalizeRun()", () => {
+  const telemetriasDaCorrida = [
+    { id: "t1", runId: "corrida-ativa-1", tempoCorridaMs: 100, posicaoX: 0, posicaoY: 0, bateriaPct: 95 },
+    { id: "t2", runId: "corrida-ativa-1", tempoCorridaMs: 5000, posicaoX: 2, posicaoY: 1, bateriaPct: 88 },
+  ];
+
+  it("deve finalizar uma corrida EM_ANDAMENTO com o status informado e os agregados calculados", async () => {
+    prismaMock.telemetry.findMany.mockResolvedValue(telemetriasDaCorrida);
+    prismaMock.run.updateMany.mockResolvedValue({ count: 1 });
+
+    await TelemetryService.finalizeRun("corrida-ativa-1", "NAO_CONCLUIDA");
+
+    expect(prismaMock.telemetry.findMany).toHaveBeenCalledWith({
+      where: { runId: "corrida-ativa-1" },
+      orderBy: { tempoCorridaMs: "asc" },
+    });
+    expect(prismaMock.run.updateMany).toHaveBeenCalledWith({
+      where: { id: "corrida-ativa-1", status: "EM_ANDAMENTO" },
+      data: expect.objectContaining({
+        status: "NAO_CONCLUIDA",
+        endedAt: expect.any(Date),
+        tempoConclusaoMs: 5000,
+        consumoBateriaPct: 7,
+        desafioCumprido: false,
+        trajetoCoordenadas: JSON.stringify([
+          { x: 0, y: 0 },
+          { x: 2, y: 1 },
+        ]),
+      }),
+    });
+  });
+
+  it("deve marcar desafioCumprido=true quando o status é CONCLUIDA", async () => {
+    prismaMock.telemetry.findMany.mockResolvedValue(telemetriasDaCorrida);
+    prismaMock.run.updateMany.mockResolvedValue({ count: 1 });
+
+    await TelemetryService.finalizeRun("corrida-ativa-1", "CONCLUIDA");
+
+    expect(prismaMock.run.updateMany).toHaveBeenCalledWith({
+      where: { id: "corrida-ativa-1", status: "EM_ANDAMENTO" },
+      data: expect.objectContaining({ desafioCumprido: true }),
+    });
+  });
+
+  it("usa NAO_CONCLUIDA como status padrão quando nenhum é informado", async () => {
+    prismaMock.telemetry.findMany.mockResolvedValue([]);
+    prismaMock.run.updateMany.mockResolvedValue({ count: 1 });
+
+    await TelemetryService.finalizeRun("corrida-sem-telemetria");
+
+    expect(prismaMock.run.updateMany).toHaveBeenCalledWith({
+      where: { id: "corrida-sem-telemetria", status: "EM_ANDAMENTO" },
+      data: expect.objectContaining({ status: "NAO_CONCLUIDA" }),
+    });
+  });
+
+  it("não deve sobrescrever uma corrida já finalizada (guard EM_ANDAMENTO / idempotente)", async () => {
+    prismaMock.telemetry.findMany.mockResolvedValue(telemetriasDaCorrida);
+    // Simula o banco real: como o guard não bate (status != EM_ANDAMENTO), count vem 0.
+    prismaMock.run.updateMany.mockResolvedValue({ count: 0 });
+
+    const resultado = await TelemetryService.finalizeRun("corrida-concluida", "NAO_CONCLUIDA");
+
+    expect(prismaMock.run.updateMany).toHaveBeenCalledWith({
+      where: { id: "corrida-concluida", status: "EM_ANDAMENTO" },
+      data: expect.objectContaining({ status: "NAO_CONCLUIDA" }),
+    });
+    expect(resultado).toEqual({ count: 0 });
+  });
+
+  it("é no-op (count 0) quando o id não existe", async () => {
+    prismaMock.telemetry.findMany.mockResolvedValue([]);
+    prismaMock.run.updateMany.mockResolvedValue({ count: 0 });
+
+    const resultado = await TelemetryService.finalizeRun("id-inexistente");
+
+    expect(resultado).toEqual({ count: 0 });
+  });
+
+  it("lida com corrida sem nenhuma telemetria (agregados nulos, sem quebrar)", async () => {
+    prismaMock.telemetry.findMany.mockResolvedValue([]);
+    prismaMock.run.updateMany.mockResolvedValue({ count: 1 });
+
+    await TelemetryService.finalizeRun("corrida-vazia", "NAO_CONCLUIDA");
+
+    expect(prismaMock.run.updateMany).toHaveBeenCalledWith({
+      where: { id: "corrida-vazia", status: "EM_ANDAMENTO" },
+      data: expect.objectContaining({
+        tempoConclusaoMs: null,
+        velocidadeMedia: null,
+        consumoBateriaPct: null,
+        trajetoCoordenadas: null,
+      }),
+    });
+  });
+});
+
+// ============================================================
+// G2 — nova corrida por sessão (detecção de reset do robô)
+// ============================================================
+describe("TelemetryService.save() — detecção de reset (G2)", () => {
+  it("deve fechar a corrida órfã e abrir uma nova quando o robô reseta (tempo_corrida_ms recuado)", async () => {
+    prismaMock.run.findFirst.mockResolvedValue(corridaAtiva);
+    prismaMock.telemetry.findFirst.mockResolvedValue({
+      id: "ultima-telemetria",
+      runId: "corrida-ativa-1",
+      tempoCorridaMs: 20000,
+    });
+    prismaMock.telemetry.findMany.mockResolvedValue([]);
+    prismaMock.run.updateMany.mockResolvedValue({ count: 1 });
+    prismaMock.run.create.mockResolvedValue({ id: "corrida-nova-1" });
+    prismaMock.telemetry.create.mockResolvedValue({
+      ...registroCriado,
+      runId: "corrida-nova-1",
+    });
+
+    const resultado = await TelemetryService.save({
+      ...payloadValido,
+      tempo_corrida_ms: 500, // bem menor que os 20000 da corrida ativa
+    });
+
+    // Fecha a corrida órfã como NAO_CONCLUIDA
+    expect(prismaMock.run.updateMany).toHaveBeenCalledWith({
+      where: { id: "corrida-ativa-1", status: "EM_ANDAMENTO" },
+      data: expect.objectContaining({ status: "NAO_CONCLUIDA" }),
+    });
+    // Cria uma corrida nova para a telemetria recebida
+    expect(prismaMock.run.create).toHaveBeenCalledWith({ data: {} });
+    expect(resultado.runId).toBe("corrida-nova-1");
+  });
+
+  it("não deve considerar reset uma pequena variação dentro da tolerância (~500ms)", async () => {
+    prismaMock.run.findFirst.mockResolvedValue(corridaAtiva);
+    prismaMock.telemetry.findFirst.mockResolvedValue({
+      id: "ultima-telemetria",
+      runId: "corrida-ativa-1",
+      tempoCorridaMs: 15400,
+    });
+    prismaMock.telemetry.create.mockResolvedValue(registroCriado);
+
+    await TelemetryService.save({ ...payloadValido, tempo_corrida_ms: 15300 });
+
+    expect(prismaMock.run.create).not.toHaveBeenCalled();
+    expect(prismaMock.run.updateMany).not.toHaveBeenCalled();
+  });
+
+  it("não deve considerar reset quando é a primeira telemetria da corrida ativa", async () => {
+    prismaMock.run.findFirst.mockResolvedValue(corridaAtiva);
+    prismaMock.telemetry.findFirst.mockResolvedValue(null); // sem telemetria anterior
+    prismaMock.telemetry.create.mockResolvedValue(registroCriado);
+
+    await TelemetryService.save(payloadValido);
+
+    expect(prismaMock.run.create).not.toHaveBeenCalled();
+    expect(prismaMock.run.updateMany).not.toHaveBeenCalled();
+  });
+
+  it("deve gravar tamanho_labirinto ao criar a corrida, quando enviado pelo firmware", async () => {
+    prismaMock.run.findFirst.mockResolvedValue(null);
+    prismaMock.run.create.mockResolvedValue({ id: "corrida-auto-1" });
+    prismaMock.telemetry.create.mockResolvedValue(registroCriado);
+
+    await TelemetryService.save({ ...payloadValido, tamanho_labirinto: 16 });
+
+    expect(prismaMock.run.create).toHaveBeenCalledWith({
+      data: { tamanhoLabirinto: 16 },
+    });
+  });
+});
+
+// ============================================================
 describe("TelemetryService.deleteRun()", () => {
   // ----------------------------------------------------------
   it("deve deletar a corrida pelo id", async () => {

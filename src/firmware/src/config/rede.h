@@ -12,10 +12,10 @@
 // backend distingue o robô (produz telemetria) dos apps web (só visualizam).
 // -----------------------------------------------------------------------------
 
-#define WIFI_SSID "iPhone"          // <-- nome da rede/hotspot (2,4 GHz)
-#define WIFI_PASS "06543210"        // <-- senha
+#define WIFI_SSID "Mr Alcatra"      // <-- nome da rede/hotspot (2,4 GHz)
+#define WIFI_PASS "01020405"        // <-- senha
 
-#define WS_HOST   "192.168.0.100"   // <-- IP do PC rodando o backend
+#define WS_HOST   "172.20.10.3"     // <-- IP do PC rodando o backend
 #define WS_PORT   3000
 #define WS_PATH   "/ws?role=robo"
 

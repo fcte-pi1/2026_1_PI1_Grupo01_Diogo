@@ -2,6 +2,7 @@
 #include <WiFi.h>
 #include "config/pinos.h"
 #include "sensores/i2c_bus.h"
+#include "sensores/energia.h"
 #include "sensores/tof.h"
 #include "sensores/imu.h"
 #include "atuadores/motores.h"
@@ -91,6 +92,10 @@ void setup() {
     Serial.println("\n=== MICROMOUSE FLOOD FILL ===");
 
     i2cInit();
+
+    if (!energiaInit()) {
+        Serial.println("[MAIN] AVISO: INA219 nao inicializou; usando leitura de reserva.");
+    }
 
     if (!imuInit())     { Serial.println("[MAIN] ERRO: IMU.");    while (true); }
     imuCalibrarOffsetZ(500);   // 500 = offset do giro menos ruidoso (casa com a bancada)

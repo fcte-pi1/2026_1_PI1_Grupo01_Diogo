@@ -5,6 +5,7 @@
 #include <string>
 
 #include "config/rede.h"
+#include "sensores/energia.h"
 #include "sensores/tof.h"
 #include "comunicacao/telemetria_contrato.h"
 
@@ -103,7 +104,7 @@ void telemetriaInit() {
     mutexSnapshot = xSemaphoreCreateMutex();
     memset(&snap, 0, sizeof(snap));
     snap.estado     = "INICIANDO";
-    snap.bateriaPct = 100;   // placeholder — sem INA219 neste firmware (D3)
+    snap.bateriaPct = energiaLerPct();
 
     // Fixa a task no Core 0 (o loop()/navegação fica no Core 1).
     xTaskCreatePinnedToCore(
@@ -131,6 +132,7 @@ void telemetriaAtualizar(uint32_t tempoCorridaMs,
         snap.y      = y;
         snap.dir    = dir;
         snap.estado = estado;   // sempre string literal (lifetime estático)
+        snap.bateriaPct = energiaLerPct();
         snap.frenteMm = frente;
         snap.esqMm    = esq;
         snap.dirMm    = dirD;

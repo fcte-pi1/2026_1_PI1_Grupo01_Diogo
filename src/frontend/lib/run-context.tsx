@@ -58,6 +58,44 @@ export function CorridaProvider({ children }: { children: ReactNode }) {
 
   const [runIdAtual, setRunIdAtual] = useState<string | null>(null);
 
+  // Ref com o runId mais recente, para ser lido pelo efeito de finalização
+  // sem precisar entrar nas dependências dele (isso evitaria reconectar o
+  // WebSocket toda vez que o runId mudasse durante uma observação ativa).
+  const runIdAtualRef = useRef<string | null>(null);
+  useEffect(() => {
+    runIdAtualRef.current = runIdAtual;
+  }, [runIdAtual]);
+
+  // Marca se já estávamos observando uma corrida, para só finalizar no
+  // backend quando o usuário efetivamente clicar "Parar" (transição
+  // true → false), não na montagem inicial do componente.
+  const observandoRef = useRef(false);
+
+  // G1: ao parar de observar uma corrida, finaliza-a no backend (marca
+  // NAO_CONCLUIDA se ainda estiver EM_ANDAMENTO). Isso fecha o ciclo de
+  // salvamento quando o usuário interrompe a corrida pelo botão "Parar" —
+  // sem isso, a corrida ficava presa em EM_ANDAMENTO para sempre.
+  useEffect(() => {
+    if (corridaEmAndamento) {
+      observandoRef.current = true;
+      return;
+    }
+
+    if (!observandoRef.current) return; // nunca esteve observando: nada a finalizar
+    observandoRef.current = false;
+
+    const runId = runIdAtualRef.current;
+    if (!runId) return;
+
+    fetch(`${backendHttp()}/api/telemetria/runs/${runId}/finalizar`, {
+      method: "PATCH",
+    }).catch(() => {
+      // Falha ao finalizar (rede/backend fora do ar): a tela já parou de
+      // observar e mantém o último caminho; o backend ainda finaliza
+      // automaticamente se receber um estado terminal do robô depois.
+    });
+  }, [corridaEmAndamento]);
+
   // O robô salva a corrida (envia telemetria pelo WebSocket). A web apenas
   // OBSERVA: ao acompanhar, assina o WebSocket e vai recebendo cada telemetria
   // nova por push (sem polling). O histórico da corrida (pontos anteriores à
