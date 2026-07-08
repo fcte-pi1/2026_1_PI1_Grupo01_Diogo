@@ -18,12 +18,14 @@ function TestConsumer() {
     <div>
       <div data-testid="em-andamento">{String(ctx.corridaEmAndamento)}</div>
       <div data-testid="run-id">{ctx.runIdAtual ?? "null"}</div>
+      <div data-testid="maze-size">{String(ctx.mazeSize)}</div>
       <div data-testid="telemetries-count">{ctx.telemetries.length}</div>
       <div data-testid="telemetria-atual">
         {ctx.telemetria ? ctx.telemetria.id : "null"}
       </div>
       <button onClick={() => ctx.setCorridaEmAndamento(true)}>iniciar</button>
       <button onClick={() => ctx.setCorridaEmAndamento(false)}>parar</button>
+      <button onClick={() => ctx.setMazeSize(8)}>maze-8</button>
     </div>
   );
 }
@@ -40,6 +42,7 @@ class MockWebSocket {
 
   url: string;
   closed = false;
+  sentMessages: string[] = [];
   onopen: (() => void) | null = null;
   onmessage: ((ev: { data: string }) => void) | null = null;
   onclose: (() => void) | null = null;
@@ -54,7 +57,9 @@ class MockWebSocket {
   close() {
     this.closed = true;
   }
-  send() {}
+  send(data: string) {
+    this.sentMessages.push(data);
+  }
 
   // Helpers de teste
   abrir() {
@@ -77,19 +82,60 @@ class MockWebSocket {
 
 // Telemetrias devolvidas pelo backfill (REST /runs/:id/telemetries).
 const backfillRun1 = [
-  { id: "tel-1", runId: "run-1", tempoCorridaMs: 100, posicaoX: 0, posicaoY: 0, direcaoAtual: "NORTE", estadoRobo: "EXPLORANDO", bateriaPct: 90, distFrenteCm: 1, distEsquerdaCm: 1, distDireitaCm: 1, timestamp: "2026-06-08T09:00:00.000Z" },
-  { id: "tel-2", runId: "run-1", tempoCorridaMs: 200, posicaoX: 1, posicaoY: 0, direcaoAtual: "NORTE", estadoRobo: "EXPLORANDO", bateriaPct: 89, distFrenteCm: 1, distEsquerdaCm: 1, distDireitaCm: 1, timestamp: "2026-06-08T09:00:01.000Z" },
+  {
+    id: "tel-1",
+    runId: "run-1",
+    tempoCorridaMs: 100,
+    posicaoX: 0,
+    posicaoY: 0,
+    direcaoAtual: "NORTE",
+    estadoRobo: "EXPLORANDO",
+    bateriaPct: 90,
+    distFrenteCm: 1,
+    distEsquerdaCm: 1,
+    distDireitaCm: 1,
+    timestamp: "2026-06-08T09:00:00.000Z",
+  },
+  {
+    id: "tel-2",
+    runId: "run-1",
+    tempoCorridaMs: 200,
+    posicaoX: 1,
+    posicaoY: 0,
+    direcaoAtual: "NORTE",
+    estadoRobo: "EXPLORANDO",
+    bateriaPct: 89,
+    distFrenteCm: 1,
+    distEsquerdaCm: 1,
+    distDireitaCm: 1,
+    timestamp: "2026-06-08T09:00:01.000Z",
+  },
 ];
 
 function pontoAoVivo(id: string, runId = "run-1") {
-  return { id, runId, tempoCorridaMs: 300, posicaoX: 2, posicaoY: 0, direcaoAtual: "NORTE", estadoRobo: "EXPLORANDO", bateriaPct: 88, distFrenteCm: 1, distEsquerdaCm: 1, distDireitaCm: 1, timestamp: "2026-06-08T09:00:02.000Z" };
+  return {
+    id,
+    runId,
+    tempoCorridaMs: 300,
+    posicaoX: 2,
+    posicaoY: 0,
+    direcaoAtual: "NORTE",
+    estadoRobo: "EXPLORANDO",
+    bateriaPct: 88,
+    distFrenteCm: 1,
+    distEsquerdaCm: 1,
+    distDireitaCm: 1,
+    timestamp: "2026-06-08T09:00:02.000Z",
+  };
 }
 
 // fetch usado só para o backfill.
 function criarFetchBackfill(telemetries: unknown[] = backfillRun1) {
-  return vi.fn().mockImplementation(() =>
-    Promise.resolve({ ok: true, json: async () => telemetries })
-  );
+  return vi
+    .fn()
+    .mockImplementation(() =>
+      Promise.resolve({ ok: true, json: async () => telemetries }),
+    );
 }
 
 beforeEach(() => {
@@ -107,7 +153,7 @@ function renderApp() {
   render(
     <CorridaProvider>
       <TestConsumer />
-    </CorridaProvider>
+    </CorridaProvider>,
   );
 }
 
@@ -128,7 +174,7 @@ describe("useCorridaContext()", () => {
     }
 
     expect(() => render(<SemProvider />)).toThrow(
-      "useCorridaContext deve ser usado dentro de CorridaProvider"
+      "useCorridaContext deve ser usado dentro de CorridaProvider",
     );
 
     consoleSpy.mockRestore();
@@ -155,6 +201,25 @@ describe("CorridaProvider (WebSocket)", () => {
     expect(MockWebSocket.ultima().url).toContain("/ws");
   });
 
+  it("envia o tamanho do labirinto selecionado ao conectar", async () => {
+    renderApp();
+    await act(async () => {
+      fireEvent.click(screen.getByText("maze-8"));
+    });
+    await iniciar();
+
+    const ws = MockWebSocket.ultima();
+    await act(async () => {
+      ws.abrir();
+    });
+
+    expect(screen.getByTestId("maze-size").textContent).toBe("8");
+    expect(ws.sentMessages.some((msg) => msg.includes("maze_size"))).toBe(true);
+    expect(
+      ws.sentMessages.some((msg) => msg.includes('"tamanho_labirinto":8')),
+    ).toBe(true);
+  });
+
   it("ao receber telemetria de uma corrida nova, faz backfill via REST e popula a trajetória", async () => {
     renderApp();
     await iniciar();
@@ -171,7 +236,7 @@ describe("CorridaProvider (WebSocket)", () => {
       expect(screen.getByTestId("telemetria-atual").textContent).toBe("tel-2");
     });
     expect(fetch).toHaveBeenCalledWith(
-      expect.stringContaining("/runs/run-1/telemetries")
+      expect.stringContaining("/runs/run-1/telemetries"),
     );
   });
 
@@ -184,7 +249,7 @@ describe("CorridaProvider (WebSocket)", () => {
       ws.receber(pontoAoVivo("live-1", "run-1")); // dispara backfill (2 pontos)
     });
     await waitFor(() =>
-      expect(screen.getByTestId("telemetries-count").textContent).toBe("2")
+      expect(screen.getByTestId("telemetries-count").textContent).toBe("2"),
     );
 
     await act(async () => {
@@ -207,7 +272,7 @@ describe("CorridaProvider (WebSocket)", () => {
       ws.receber(pontoAoVivo("a1", "run-1"));
     });
     await waitFor(() =>
-      expect(screen.getByTestId("run-id").textContent).toBe("run-1")
+      expect(screen.getByTestId("run-id").textContent).toBe("run-1"),
     );
 
     await act(async () => {
@@ -297,7 +362,7 @@ describe("CorridaProvider (WebSocket)", () => {
     expect(ws.closed).toBe(true);
     // caminho preservado
     expect(
-      Number(screen.getByTestId("telemetries-count").textContent)
+      Number(screen.getByTestId("telemetries-count").textContent),
     ).toBeGreaterThanOrEqual(1);
 
     // Mesmo avançando o tempo, não reconecta (não cria nova instância).

@@ -15,6 +15,8 @@ import { backendHttp, backendWs } from "./backend";
 // Backoff de reconexão do WebSocket: 1s, 2s, 4s... até no máximo 10s.
 const RECONEXAO_MAX_MS = 10000;
 
+export type MazeSize = 4 | 8 | 16;
+
 export type Telemetria = {
   id: string;
   runId: string;
@@ -44,6 +46,9 @@ type CorridaContextType = {
   telemetria: Telemetria | null;
   telemetries: Telemetria[];
 
+  mazeSize: MazeSize;
+  setMazeSize: (v: MazeSize) => void;
+
   runIdAtual: string | null;
 };
 
@@ -56,7 +61,14 @@ export function CorridaProvider({ children }: { children: ReactNode }) {
 
   const [telemetries, setTelemetries] = useState<Telemetria[]>([]);
 
+  const [mazeSize, setMazeSize] = useState<MazeSize>(16);
+
   const [runIdAtual, setRunIdAtual] = useState<string | null>(null);
+
+  const mazeSizeRef = useRef<MazeSize>(mazeSize);
+  useEffect(() => {
+    mazeSizeRef.current = mazeSize;
+  }, [mazeSize]);
 
   // Ref com o runId mais recente, para ser lido pelo efeito de finalização
   // sem precisar entrar nas dependências dele (isso evitaria reconectar o
@@ -70,6 +82,20 @@ export function CorridaProvider({ children }: { children: ReactNode }) {
   // backend quando o usuário efetivamente clicar "Parar" (transição
   // true → false), não na montagem inicial do componente.
   const observandoRef = useRef(false);
+
+  const wsRef = useRef<WebSocket | null>(null);
+
+  const enviarMazeSize = () => {
+    const ws = wsRef.current;
+    if (!ws || ws.readyState !== WebSocket.OPEN) return;
+
+    ws.send(
+      JSON.stringify({
+        type: "maze_size",
+        payload: { tamanho_labirinto: mazeSizeRef.current },
+      }),
+    );
+  };
 
   // G1: ao parar de observar uma corrida, finaliza-a no backend (marca
   // NAO_CONCLUIDA se ainda estiver EM_ANDAMENTO). Isso fecha o ciclo de
@@ -95,6 +121,11 @@ export function CorridaProvider({ children }: { children: ReactNode }) {
       // automaticamente se receber um estado terminal do robô depois.
     });
   }, [corridaEmAndamento]);
+
+  useEffect(() => {
+    if (!corridaEmAndamento) return;
+    enviarMazeSize();
+  }, [mazeSize, corridaEmAndamento]);
 
   // O robô salva a corrida (envia telemetria pelo WebSocket). A web apenas
   // OBSERVA: ao acompanhar, assina o WebSocket e vai recebendo cada telemetria
@@ -165,9 +196,11 @@ export function CorridaProvider({ children }: { children: ReactNode }) {
 
     const conectar = () => {
       ws = new WebSocket(backendWs());
+      wsRef.current = ws;
 
       ws.onopen = () => {
         tentativa = 0;
+        enviarMazeSize();
       };
 
       ws.onmessage = (evento) => {
@@ -208,6 +241,7 @@ export function CorridaProvider({ children }: { children: ReactNode }) {
     return () => {
       encerrado = true;
       if (timerReconexao) clearTimeout(timerReconexao);
+      wsRef.current = null;
       ws?.close();
     };
   }, [corridaEmAndamento]);
@@ -222,9 +256,11 @@ export function CorridaProvider({ children }: { children: ReactNode }) {
       setCorridaEmAndamento,
       telemetria,
       telemetries,
+      mazeSize,
+      setMazeSize,
       runIdAtual,
     }),
-    [corridaEmAndamento, telemetria, telemetries, runIdAtual],
+    [corridaEmAndamento, telemetria, telemetries, mazeSize, runIdAtual],
   );
 
   return (

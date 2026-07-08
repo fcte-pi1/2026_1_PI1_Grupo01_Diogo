@@ -44,6 +44,7 @@ export function setupRealtime(
 ): RealtimeHandle {
   const heartbeatIntervalMs = options.heartbeatIntervalMs ?? 30_000;
   const appClients = new Set<WebSocket>();
+  let tamanhoLabirintoSelecionado: number | undefined;
 
   const heartbeat = setInterval(() => {
     wss.clients.forEach((client) => {
@@ -85,6 +86,21 @@ export function setupRealtime(
         const { type, payload } = parseMensagem(message.toString());
 
         switch (type) {
+          case "maze_size": {
+            if (parsePapel(req.url) !== "app") {
+              return;
+            }
+
+            const configuracao = payload as
+              | { tamanho_labirinto?: unknown }
+              | undefined;
+            const tamanho = Number(configuracao?.tamanho_labirinto);
+            if (Number.isFinite(tamanho) && tamanho > 0) {
+              tamanhoLabirintoSelecionado = Math.floor(tamanho);
+            }
+            break;
+          }
+
           case "telemetria": {
             if (
               !payload ||
@@ -112,6 +128,13 @@ export function setupRealtime(
                 "Mensagem WebSocket inválida: campos obrigatórios ausentes.",
               );
               return;
+            }
+
+            if (
+              telemetria.tamanho_labirinto === undefined &&
+              tamanhoLabirintoSelecionado !== undefined
+            ) {
+              telemetria.tamanho_labirinto = tamanhoLabirintoSelecionado;
             }
 
             const result = await TelemetryService.save(payload);

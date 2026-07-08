@@ -53,6 +53,7 @@ npm run dev                   # http://localhost:3001
 ```
 
 Abra **http://localhost:3001** e clique em **Iniciar** (começa a observar o WebSocket).
+No painel da corrida, o tamanho do labirinto escolhido na UI é o valor usado para a corrida atual e para o que fica salvo no banco.
 
 ## 3. Descobrir o IP do PC (vai na ESP)
 

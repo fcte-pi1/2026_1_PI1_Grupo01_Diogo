@@ -1,4 +1,11 @@
-import { afterEach, beforeEach, describe, expect, it, jest } from "@jest/globals";
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  jest,
+} from "@jest/globals";
 import type { IncomingMessage } from "http";
 import { Duplex } from "stream";
 import WebSocket, { WebSocketServer } from "ws";
@@ -40,7 +47,7 @@ class MemoryDuplex extends Duplex {
   _write(
     chunk: Buffer | string,
     _encoding: BufferEncoding,
-    callback: (error?: Error | null) => void
+    callback: (error?: Error | null) => void,
   ) {
     if (this.peer && !this.peer.destroyed) {
       this.peer.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
@@ -138,7 +145,7 @@ function waitForClose(socket: WebSocket, timeoutMs = 2000): Promise<void> {
 function waitForCondition(
   condition: () => boolean,
   timeoutMs = 2000,
-  intervalMs = 10
+  intervalMs = 10,
 ): Promise<void> {
   return new Promise((resolve, reject) => {
     const startedAt = Date.now();
@@ -184,22 +191,18 @@ function parseHeaders(rawHeaders: string) {
 async function connectSocket(
   wss: WebSocketServer,
   role: "app" | "robo",
-  options: WebSocket.ClientOptions = {}
+  options: WebSocket.ClientOptions = {},
 ): Promise<ConnectedSocket> {
   const pair = createPair();
   const clientUrl = `ws://localhost/ws?role=${role}`;
   let upgraded = false;
   let handshakeBuffer = Buffer.alloc(0);
 
-  const client = new WebSocket(
-    clientUrl,
-    undefined,
-    {
-      createConnection: (() => pair.client) as any,
-      perMessageDeflate: false,
-      ...options,
-    } as any
-  );
+  const client = new WebSocket(clientUrl, undefined, {
+    createConnection: (() => pair.client) as any,
+    perMessageDeflate: false,
+    ...options,
+  } as any);
 
   const openPromise = waitForOpen(client);
 
@@ -276,6 +279,13 @@ describe("WebSocket realtime", () => {
         mensagensApp.push(JSON.parse(data.toString()));
       });
 
+      appSocket.client.send(
+        JSON.stringify({
+          type: "maze_size",
+          payload: { tamanho_labirinto: 8 },
+        }),
+      );
+
       roboSocket.client.send(
         JSON.stringify({
           type: "telemetria",
@@ -293,17 +303,16 @@ describe("WebSocket realtime", () => {
             },
             runId: "corrida-1",
           },
-        })
+        }),
       );
 
-      await waitForCondition(
-        () =>
-          mensagensApp.some(
-            (mensagem) =>
-              mensagem.type === "telemetria" &&
-              (mensagem.payload as { id?: string } | undefined)?.id ===
-                "telemetria-1"
-          )
+      await waitForCondition(() =>
+        mensagensApp.some(
+          (mensagem) =>
+            mensagem.type === "telemetria" &&
+            (mensagem.payload as { id?: string } | undefined)?.id ===
+              "telemetria-1",
+        ),
       );
 
       expect(mockSave).toHaveBeenCalledTimes(1);
@@ -312,11 +321,12 @@ describe("WebSocket realtime", () => {
           tempo_corrida_ms: 1000,
           posicao_x: 2,
           posicao_y: 3,
+          tamanho_labirinto: 8,
           runId: "corrida-1",
-        })
+        }),
       );
       expect(
-        mensagensApp.find((mensagem) => mensagem.type === "telemetria")
+        mensagensApp.find((mensagem) => mensagem.type === "telemetria"),
       ).toEqual({
         type: "telemetria",
         payload: expect.objectContaining({
