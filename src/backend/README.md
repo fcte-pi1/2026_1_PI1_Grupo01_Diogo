@@ -1,19 +1,49 @@
-# _Backend_
+# Backend
 
-Esta pasta deverá armazenar arquivos referentes a:
+Diretório da API e servidor do projeto do Micromouse.
 
-- Código-fonte da API REST: rotas, controladores, modelos e lógica de negócio.
-- Arquivos de configuração do servidor: `app.py`, `server.js`, `main.go` etc., dependendo da linguagem/framework utilizado ([Flask](https://flask.palletsprojects.com/), [FastAPI](https://fastapi.tiangolo.com/), [Express](https://expressjs.com/), [Django](https://www.djangoproject.com/) etc.).
-- Arquivos de definição de dependências: `requirements.txt` ou `pyproject.toml` (Python), `package.json` (Node.js), `pom.xml` (Java/Maven) etc.
-- Scripts de migração e esquemas de banco de dados: arquivos `.sql`, scripts de migração ([Alembic](https://alembic.sqlalchemy.org/), [Sequelize](https://sequelize.org/) etc.) e seeds de dados para desenvolvimento.
-- Arquivos de configuração de ambiente: `.env.example` com as variáveis de ambiente necessárias (nunca o `.env` real).
-- Arquivos de containerização: `Dockerfile` e `docker-compose.yml`, caso o serviço seja executado em contêiner.
+## Tecnologias
+- Node.js (v20+ recomendado para ambiente WSL/Linux)
+- Express
+- TypeScript
+- Prisma ORM v5 (com SQLite)
 
-Evite incluir:
+## Como Rodar Localmente
 
-- Credenciais e segredos: arquivos `.env`, chaves de API, senhas, tokens de acesso ou qualquer dado sensível **nunca** devem ser versionados.
-- Artefatos de build: diretórios como `__pycache__/`, `dist/`, `build/`, `.eggs/` devem ser gerados localmente e ignorados via `.gitignore`.
-- Dependências instaladas: pastas como `node_modules/` ou ambientes virtuais Python (`venv/`, `.env/`) não devem ser incluídos no repositório.
-- Arquivos temporários/específicos do sistema operacional: arquivos gerados automaticamente pelo sistema ou pelo gerenciador de arquivos (ex.: `*~`, `.DS_Store`, `Thumbs.db`).
+1. Acesse a pasta e instale as dependências:
+    ```bash
+    cd src/backend
+    npm install
+    ```
+
+2. Sincronize o banco de dados e gere o Prisma Client:
+    ```bash
+    npx prisma db push
+    npx prisma generate
+    ```
+
+3. Inicie o servidor de desenvolvimento:
+    ```bash
+    npm run dev
+    # ou diretamente: npx ts-node api/server.ts
+    ```
+
+## Estrutura de Pastas (Arquitetura MSC)
+
+- `api/`
+  - `routes/`: Definição dos endpoints da API (`/api/telemetry`).
+  - `controllers/`: Gerenciamento das requisições e respostas HTTP.
+  - `services/`: Regras de negócio e comunicação direta com o banco via Prisma.
+  - `server.ts`: Arquivo de inicialização do servidor Express.
+- `prisma/`: Esquema do banco de dados (`schema.prisma`) e arquivo local `dev.db`.
+
+> [!TIP]
+> Para testar o envio de dados em tempo real sem o robô físico, utilize o script de simulação em `/mocks/teste_stress_api.js`:
+> ```bash
+> node mocks/teste_stress_api.js              # ~tempo real (300ms entre envios)
+> INTERVALO_MS=1 node mocks/teste_stress_api.js   # rajada (teste de estresse)
+> ```
+> Fluxo de demonstração: na web clique em **Iniciar Gravação**, rode o script acima e veja o caminho ser construído no minimapa; o robô encerra a corrida sozinho ao enviar `OBJETIVO_ENCONTRADO`.
+
 > [!WARNING]
-> **Não acrescente arquivos referentes ao _frontend_ nesta pasta.** Eles deverão ser armazenados na pasta [frontend](https://github.com/fcte-pi1/template/tree/main/src/frontend) deste repositório.
+> Código de interface, componentes visuais e regras de negócio do cliente devem ficar exclusivamente na pasta `src/frontend`.

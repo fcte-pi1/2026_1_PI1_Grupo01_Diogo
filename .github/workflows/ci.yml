@@ -1,0 +1,66 @@
+# ============================================================
+# CI — Testes Automatizados do Backend (MrBombastic)
+# Executa em todo push e pull request para as branches principais.
+# Roda: lint de tipos TypeScript + suíte Jest com cobertura ≥ 80%.
+# ============================================================
+
+name: CI — Backend Tests
+
+on:
+  push:
+    branches:
+      - develop
+      - "feature/**"
+      - "SW_**"
+  pull_request:
+    branches:
+      - develop
+
+jobs:
+  test:
+    name: Testes unitários e de integração
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: src/backend
+
+    steps:
+      # 1. Baixa o código do repositório
+      - name: Checkout do repositório
+        uses: actions/checkout@v4
+
+      # 2. Configura o Node.js na versão LTS
+      - name: Configurar Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: src/backend/package-lock.json
+
+      # 3. Instala as dependências
+      - name: Instalar dependências
+        run: npm ci
+
+      # 4. Gera o Prisma Client (necessário mesmo com o banco mockado)
+      - name: Gerar Prisma Client
+        run: npx prisma generate
+
+      # 5. Verifica tipos TypeScript sem emitir arquivos
+      - name: Verificar tipagem TypeScript
+        run: npx tsc --noEmit
+
+      # 6. Executa os testes com cobertura
+      #    O job falha automaticamente se a cobertura cair abaixo de 80%
+      #    (threshold configurado no package.json → jest → coverageThresholds)
+      - name: Executar testes com cobertura
+        run: npm run test:ci
+
+      # 7. Publica o relatório de cobertura como artefato do workflow
+      - name: Salvar relatório de cobertura
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage-report
+          path: src/backend/coverage/
+          retention-days: 7

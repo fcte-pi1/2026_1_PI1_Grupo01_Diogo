@@ -65,3 +65,74 @@ Como o uso do Overleaf é manual, siga esta ordem:
 3. Substitua-os na pasta `docs/relatorio/editaveis/` do seu repositório local.
 4. Siga o **Fluxo Git** acima para subir as mudanças.
 *Observação: Não altere o `main.tex` nem envie arquivos `.pdf` no commit.*
+
+# Como rodar o projeto?
+
+## Rodando o Prisma na Aplicação
+Como o Prisma já está configurado no projeto, utilize os comandos abaixo conforme a necessidade.
+
+### 1. Instalar dependências (caso necessário)
+```bash
+npm install
+```
+
+### 2. Gerar o Prisma Client
+Sempre que houver alterações no arquivo `schema.prisma`:
+```bash
+npx prisma generate
+```
+
+### 3. Criar uma migration
+Após modificar o schema:
+```bash
+npx prisma migrate dev --name nome_da_migration
+```
+
+### 4. Aplicar migrations existentes
+Caso esteja clonando o projeto ou atualizando o banco:
+```bash
+npx prisma migrate deploy
+```
+
+### 5. Sincronizar schema sem criar migration
+Útil durante desenvolvimento:
+```bash
+npx prisma db push
+```
+
+### 6. Abrir o Prisma Studio
+Interface visual para visualizar e editar dados:
+```bash
+npx prisma studio
+```
+
+```bash
+npx prisma migrate dev
+```
+## Rodando o BackEnd
+Acessar a pasta do projeto
+```bash
+cd src/backend
+```
+Instalar as dependências:
+```bash
+npm install
+```
+Executar a plaicação:
+```bash
+npm run dev
+```
+
+## Rodando o FrontEnd
+Acessar a pasta do projeto
+```bash
+cd src/frontend
+```
+Instalar as dependências:
+```bash
+npm install
+```
+Executar a plaicação:
+```bash
+npm run dev
+```
