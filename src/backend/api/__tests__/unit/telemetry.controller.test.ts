@@ -187,3 +187,282 @@ describe("TelemetryController.getLatest()", () => {
     );
   });
 });
+
+// ============================================================
+// Listagem e consulta de corridas
+// ============================================================
+
+const mockGetRuns = TelemetryService.getRuns as jest.Mock;
+const mockGetTelemetriesByRunId = TelemetryService.getTelemetriesByRunId as jest.Mock;
+
+// Helper que expõe params (usado nas rotas com :id)
+const criarReqComId = (id: string): Partial<Request> => ({
+  params: { id } as any,
+});
+
+const listaDeCorridas = [
+  {
+    id: "corrida-1",
+    status: "CONCLUIDA",
+    startedAt: "2026-06-07T09:59:00.000Z",
+    endedAt: "2026-06-07T10:05:00.000Z",
+  },
+  {
+    id: "corrida-2",
+    status: "EM_ANDAMENTO",
+    startedAt: "2026-06-08T09:00:00.000Z",
+    endedAt: null,
+  },
+];
+
+const listaDeTelemetrias = [
+  { id: "tel-1", runId: "corrida-1", tempoCorridaMs: 100, posicaoX: 0, posicaoY: 0 },
+  { id: "tel-2", runId: "corrida-1", tempoCorridaMs: 200, posicaoX: 1, posicaoY: 0 },
+];
+
+describe("TelemetryController.getRuns()", () => {
+  // ----------------------------------------------------------
+  it("deve retornar 200 com a lista de corridas", async () => {
+    mockGetRuns.mockResolvedValue(listaDeCorridas);
+
+    const req = criarReq();
+    const res = criarRes();
+
+    await TelemetryController.getRuns(req as Request, res as Response);
+
+    expect(res.json).toHaveBeenCalledWith(listaDeCorridas);
+  });
+
+  // ----------------------------------------------------------
+  it("deve retornar 200 com array vazio quando não há corridas cadastradas", async () => {
+    mockGetRuns.mockResolvedValue([]);
+
+    const req = criarReq();
+    const res = criarRes();
+
+    await TelemetryController.getRuns(req as Request, res as Response);
+
+    expect(res.json).toHaveBeenCalledWith([]);
+  });
+
+  // ----------------------------------------------------------
+  it("deve retornar 500 quando o TelemetryService lança um erro", async () => {
+    mockGetRuns.mockRejectedValue(new Error("Falha ao consultar o banco"));
+
+    const req = criarReq();
+    const res = criarRes();
+
+    await TelemetryController.getRuns(req as Request, res as Response);
+
+    expect(res.status).toHaveBeenCalledWith(500);
+    expect(res.json).toHaveBeenCalledWith(
+      expect.objectContaining({ error: "Internal Server Error" })
+    );
+  });
+});
+
+// ============================================================
+describe("TelemetryController.getTelemetriesByRunId()", () => {
+  // ----------------------------------------------------------
+  it("deve retornar 200 com a lista de telemetrias da corrida", async () => {
+    mockGetTelemetriesByRunId.mockResolvedValue(listaDeTelemetrias);
+
+    const req = criarReqComId("corrida-1");
+    const res = criarRes();
+
+    await TelemetryController.getTelemetriesByRunId(req as Request, res as Response);
+
+    expect(mockGetTelemetriesByRunId).toHaveBeenCalledWith("corrida-1");
+    expect(res.json).toHaveBeenCalledWith(listaDeTelemetrias);
+  });
+
+  // ----------------------------------------------------------
+  it("deve retornar 200 com array vazio quando a corrida não possui telemetrias", async () => {
+    mockGetTelemetriesByRunId.mockResolvedValue([]);
+
+    const req = criarReqComId("corrida-sem-dados");
+    const res = criarRes();
+
+    await TelemetryController.getTelemetriesByRunId(req as Request, res as Response);
+
+    expect(res.json).toHaveBeenCalledWith([]);
+  });
+
+  // ----------------------------------------------------------
+  it("deve retornar 500 quando o TelemetryService lança um erro", async () => {
+    mockGetTelemetriesByRunId.mockRejectedValue(new Error("Falha na consulta"));
+
+    const req = criarReqComId("corrida-1");
+    const res = criarRes();
+
+    await TelemetryController.getTelemetriesByRunId(req as Request, res as Response);
+
+    expect(res.status).toHaveBeenCalledWith(500);
+    expect(res.json).toHaveBeenCalledWith(
+      expect.objectContaining({ error: "Internal Server Error" })
+    );
+  });
+});
+
+// ============================================================
+// Exclusão de corrida (usada pela tabela de histórico)
+// ============================================================
+
+const mockDeleteRun = TelemetryService.deleteRun as jest.Mock;
+const mockGetRunById = TelemetryService.getRunById as jest.Mock;
+
+// Helpers que também expõem params e o método .send (usado no 204)
+const criarReqComParams = (params: object): Partial<Request> => ({
+  params: params as any,
+});
+
+const criarResComSend = (): Partial<Response> => {
+  const res: Partial<Response> = {};
+  res.status = jest.fn().mockReturnValue(res);
+  res.json = jest.fn().mockReturnValue(res);
+  res.send = jest.fn().mockReturnValue(res);
+  return res;
+};
+
+const corridaAtiva = {
+  id: "corrida-1",
+  status: "EM_ANDAMENTO",
+  startedAt: "2026-06-07T09:59:00.000Z",
+  endedAt: null,
+};
+
+describe("TelemetryController.deleteRun()", () => {
+  it("deve retornar 204 quando a corrida existe e é deletada", async () => {
+    mockGetRunById.mockResolvedValue(corridaAtiva);
+    mockDeleteRun.mockResolvedValue(corridaAtiva);
+
+    const req = criarReqComParams({ id: "corrida-1" });
+    const res = criarResComSend();
+
+    await TelemetryController.deleteRun(req as Request, res as Response);
+
+    expect(mockDeleteRun).toHaveBeenCalledWith("corrida-1");
+    expect(res.status).toHaveBeenCalledWith(204);
+    expect(res.send).toHaveBeenCalled();
+  });
+
+  it("deve retornar 404 quando a corrida não existe", async () => {
+    mockGetRunById.mockResolvedValue(null);
+
+    const req = criarReqComParams({ id: "inexistente" });
+    const res = criarResComSend();
+
+    await TelemetryController.deleteRun(req as Request, res as Response);
+
+    expect(res.status).toHaveBeenCalledWith(404);
+    expect(mockDeleteRun).not.toHaveBeenCalled();
+  });
+
+  it("deve retornar 500 quando o serviço falha", async () => {
+    mockGetRunById.mockResolvedValue(corridaAtiva);
+    mockDeleteRun.mockRejectedValue(new Error("DB offline"));
+
+    const req = criarReqComParams({ id: "corrida-1" });
+    const res = criarResComSend();
+
+    await TelemetryController.deleteRun(req as Request, res as Response);
+
+    expect(res.status).toHaveBeenCalledWith(500);
+  });
+});
+
+// ============================================================
+// Encerramento manual da corrida (botão "Parar" no frontend)
+// ============================================================
+
+const mockFinalizeRun = TelemetryService.finalizeRun as jest.Mock;
+
+describe("TelemetryController.finalizarRun()", () => {
+  it("deve finalizar a corrida existente e retornar 200 com a corrida atualizada", async () => {
+    mockGetRunById
+      .mockResolvedValueOnce(corridaAtiva)
+      .mockResolvedValueOnce({ ...corridaAtiva, status: "NAO_CONCLUIDA" });
+    mockFinalizeRun.mockResolvedValue({ count: 1 });
+
+    const req = criarReqComParams({ id: "corrida-1" });
+    const res = criarResComSend();
+
+    await TelemetryController.finalizarRun(req as Request, res as Response);
+
+    expect(mockFinalizeRun).toHaveBeenCalledWith("corrida-1", "NAO_CONCLUIDA");
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(res.json).toHaveBeenCalledWith(
+      expect.objectContaining({ status: "NAO_CONCLUIDA" })
+    );
+  });
+
+  it("deve retornar 404 quando a corrida não existe", async () => {
+    mockGetRunById.mockResolvedValue(null);
+
+    const req = criarReqComParams({ id: "inexistente" });
+    const res = criarResComSend();
+
+    await TelemetryController.finalizarRun(req as Request, res as Response);
+
+    expect(res.status).toHaveBeenCalledWith(404);
+    expect(mockFinalizeRun).not.toHaveBeenCalled();
+  });
+
+  it("deve retornar 500 quando o serviço falha", async () => {
+    mockGetRunById.mockResolvedValue(corridaAtiva);
+    mockFinalizeRun.mockRejectedValue(new Error("DB offline"));
+
+    const req = criarReqComParams({ id: "corrida-1" });
+    const res = criarResComSend();
+
+    await TelemetryController.finalizarRun(req as Request, res as Response);
+
+    expect(res.status).toHaveBeenCalledWith(500);
+  });
+});
+
+// ============================================================
+describe("TelemetryController.getRunById()", () => {
+  // ----------------------------------------------------------
+  it("deve retornar 200 com a corrida quando ela existe", async () => {
+    mockGetRunById.mockResolvedValue(corridaAtiva);
+
+    const req = criarReqComParams({ id: "corrida-1" });
+    const res = criarResComSend();
+
+    await TelemetryController.getRunById(req as Request, res as Response);
+
+    expect(mockGetRunById).toHaveBeenCalledWith("corrida-1");
+    expect(res.json).toHaveBeenCalledWith(corridaAtiva);
+  });
+
+  // ----------------------------------------------------------
+  it("deve retornar 404 quando a corrida não existe", async () => {
+    mockGetRunById.mockResolvedValue(null);
+
+    const req = criarReqComParams({ id: "inexistente" });
+    const res = criarResComSend();
+
+    await TelemetryController.getRunById(req as Request, res as Response);
+
+    expect(res.status).toHaveBeenCalledWith(404);
+    expect(res.json).toHaveBeenCalledWith(
+      expect.objectContaining({ error: "Corrida não encontrada" })
+    );
+  });
+
+  // ----------------------------------------------------------
+  it("deve retornar 500 quando o TelemetryService lança um erro", async () => {
+    mockGetRunById.mockRejectedValue(new Error("Falha ao consultar o banco"));
+
+    const req = criarReqComParams({ id: "corrida-1" });
+    const res = criarResComSend();
+
+    await TelemetryController.getRunById(req as Request, res as Response);
+
+    expect(res.status).toHaveBeenCalledWith(500);
+    expect(res.json).toHaveBeenCalledWith(
+      expect.objectContaining({ error: "Internal Server Error" })
+    );
+  });
+});

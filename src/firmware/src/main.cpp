@@ -2,11 +2,13 @@
 #include <WiFi.h>
 #include "config/pinos.h"
 #include "sensores/i2c_bus.h"
+#include "sensores/energia.h"
 #include "sensores/tof.h"
 #include "sensores/imu.h"
 #include "atuadores/motores.h"
 #include "navegacao/navegacao.h"
 #include "navegacao/flood_fill.h"
+#include "comunicacao/telemetria.h"
 
 // =============================================================================
 // MICROMOUSE — Navegação por FLOOD FILL com movimento controlado por PID.
@@ -32,10 +34,11 @@ Direcao  robDir = NORTE;
 
 bool concluido = false;
 bool iniciado  = false;   // trava de largada: só anda depois do comando 'g'
+uint32_t inicioCorridaMs = 0;
 
 // --- Telemetria WiFi (mesma rede da bancada teste_navegacao) ---
-const char*    WIFI_SSID  = "iPhone";
-const char*    WIFI_PASS  = "06543210";
+const char*    WIFI_SSID  = "Mr Alcatra";
+const char*    WIFI_PASS  = "01020405";
 const uint16_t WIFI_PORTA = 8080;
 WiFiServer server(WIFI_PORTA);
 WiFiClient client;
@@ -91,8 +94,12 @@ void setup() {
 
     i2cInit();
 
+    if (!energiaInit()) {
+        Serial.println("[MAIN] AVISO: INA219 nao inicializou; usando leitura de reserva.");
+    }
+
     if (!imuInit())     { Serial.println("[MAIN] ERRO: IMU.");    while (true); }
-    imuCalibrarOffsetZ(500);   // 500 = offset do giro menos ruidoso (casa com a bancada)
+    imuCalibrarOffsetZ(800);   // 500 = offset do giro menos ruidoso (casa com a bancada)
     imuZerarAnguloZ();
 
     if (!tofInit())     { Serial.println("[MAIN] ERRO: ToF.");    while (true); }
@@ -101,6 +108,10 @@ void setup() {
 
     labirinto.iniciar();              // paredes zeradas + moldura + objetivo central
     navZerarRumo();
+
+    // Sobe a telemetria (Wi-Fi + WebSocket) numa task no Core 0. A navegação
+    // segue no loop() (Core 1) sem ser travada pela rede.
+    telemetriaInit();
 
     conectarWiFi();
     logLinha("=== PRONTO: robo em (0,0) olhando NORTE. Envie 'g' para INICIAR. ===");
@@ -125,7 +136,10 @@ void loop() {
     while (lerComando(c)) {
         if ((c == 'g' || c == 'G') && !iniciado) {
             iniciado = true;
+            inicioCorridaMs = millis();
             logLinha("=== INICIANDO CORRIDA ===");
+            telemetriaAtualizar(millis() - inicioCorridaMs, robX, robY, robDir,
+                                "EXPLORANDO");
         } else if ((c == 'p' || c == 'P') && iniciado && !concluido) {
             logLinha("=== PARADO pelo 'p'. Reset p/ rodar de novo. ===");
             navParar();
@@ -151,6 +165,8 @@ void loop() {
 
     // 2. Recalcula distâncias até o objetivo.
     labirinto.calcular();
+    telemetriaAtualizar(millis() - inicioCorridaMs, robX, robY, robDir,
+                        "EXPLORANDO");
 
     {
         char buf[96];
@@ -165,6 +181,9 @@ void loop() {
         labirinto.imprimirSerial();   // mapa de distâncias (só Serial)
         navParar();
         concluido = true;
+        // Estado terminal → backend finaliza a corrida como CONCLUIDA.
+        telemetriaAtualizar(millis() - inicioCorridaMs, robX, robY, robDir,
+                            "OBJETIVO_ENCONTRADO");
         return;
     }
 
@@ -174,6 +193,9 @@ void loop() {
         logLinha("[MAIN] Preso: nenhuma direcao valida.");
         navParar();
         concluido = true;
+        // Estado terminal → backend finaliza a corrida como NAO_CONCLUIDA.
+        telemetriaAtualizar(millis() - inicioCorridaMs, robX, robY, robDir,
+                            "ERRO");
         return;
     }
 
@@ -205,6 +227,8 @@ void loop() {
         return;                           // NÃO avança a posição lógica
     }
     avancarPosicao(proxima);
+    telemetriaAtualizar(millis() - inicioCorridaMs, robX, robY, robDir,
+                        "EXPLORANDO");
 }
 
 // -----------------------------------------------------------------------------

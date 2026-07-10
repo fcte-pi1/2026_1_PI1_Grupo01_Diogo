@@ -14,9 +14,11 @@
   "license": "ISC",
   "dependencies": {
     "@prisma/client": "^5.22.0",
+    "@types/ws": "^8.18.1",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
-    "express": "^5.2.1"
+    "express": "^5.2.1",
+    "ws": "^8.21.0"
   },
   "devDependencies": {
     "@playwright/test": "^1.60.0",
@@ -37,8 +39,12 @@
   "jest": {
     "preset": "ts-jest",
     "testEnvironment": "node",
-    "roots": ["<rootDir>/api/__tests__"],
-    "testMatch": ["**/*.test.ts"],
+    "roots": [
+      "<rootDir>/api/__tests__"
+    ],
+    "testMatch": [
+      "**/*.test.ts"
+    ],
     "collectCoverageFrom": [
       "api/**/*.ts",
       "!api/server.ts",
@@ -52,7 +58,11 @@
         "statements": 80
       }
     },
-    "coverageReporters": ["text", "lcov", "html"],
+    "coverageReporters": [
+      "text",
+      "lcov",
+      "html"
+    ],
     "moduleNameMapper": {
       "@prisma/client": "<rootDir>/api/__tests__/__mocks__/prisma.mock.ts"
     }
