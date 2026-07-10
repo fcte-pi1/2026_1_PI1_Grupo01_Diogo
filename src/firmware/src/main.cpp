@@ -34,10 +34,11 @@ Direcao  robDir = NORTE;
 
 bool concluido = false;
 bool iniciado  = false;   // trava de largada: só anda depois do comando 'g'
+uint32_t inicioCorridaMs = 0;
 
 // --- Telemetria WiFi (mesma rede da bancada teste_navegacao) ---
-const char*    WIFI_SSID  = "iPhone";
-const char*    WIFI_PASS  = "06543210";
+const char*    WIFI_SSID  = "Mr Alcatra";
+const char*    WIFI_PASS  = "01020405";
 const uint16_t WIFI_PORTA = 8080;
 WiFiServer server(WIFI_PORTA);
 WiFiClient client;
@@ -98,7 +99,7 @@ void setup() {
     }
 
     if (!imuInit())     { Serial.println("[MAIN] ERRO: IMU.");    while (true); }
-    imuCalibrarOffsetZ(500);   // 500 = offset do giro menos ruidoso (casa com a bancada)
+    imuCalibrarOffsetZ(800);   // 500 = offset do giro menos ruidoso (casa com a bancada)
     imuZerarAnguloZ();
 
     if (!tofInit())     { Serial.println("[MAIN] ERRO: ToF.");    while (true); }
@@ -135,7 +136,10 @@ void loop() {
     while (lerComando(c)) {
         if ((c == 'g' || c == 'G') && !iniciado) {
             iniciado = true;
+            inicioCorridaMs = millis();
             logLinha("=== INICIANDO CORRIDA ===");
+            telemetriaAtualizar(millis() - inicioCorridaMs, robX, robY, robDir,
+                                "EXPLORANDO");
         } else if ((c == 'p' || c == 'P') && iniciado && !concluido) {
             logLinha("=== PARADO pelo 'p'. Reset p/ rodar de novo. ===");
             navParar();
@@ -161,6 +165,8 @@ void loop() {
 
     // 2. Recalcula distâncias até o objetivo.
     labirinto.calcular();
+    telemetriaAtualizar(millis() - inicioCorridaMs, robX, robY, robDir,
+                        "EXPLORANDO");
 
     {
         char buf[96];
@@ -221,6 +227,8 @@ void loop() {
         return;                           // NÃO avança a posição lógica
     }
     avancarPosicao(proxima);
+    telemetriaAtualizar(millis() - inicioCorridaMs, robX, robY, robDir,
+                        "EXPLORANDO");
 }
 
 // -----------------------------------------------------------------------------

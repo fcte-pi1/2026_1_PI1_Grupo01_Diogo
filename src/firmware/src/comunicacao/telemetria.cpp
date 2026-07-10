@@ -25,6 +25,7 @@ static SemaphoreHandle_t   mutexSnapshot = nullptr;
 static telemetria::Snapshot snap;
 static volatile bool       wsConectado = false;
 static volatile bool       enviarJa    = false;
+static volatile bool       estadoTerminalEnviado = false;
 
 // Copia o snapshot sob lock, serializa no contrato { type, payload } e envia.
 static void enviarTelemetria() {
@@ -90,10 +91,21 @@ static void tarefaTelemetria(void *param) {
 
         const uint32_t agora = millis();
         const bool porTempo  = (agora - ultimoEnvio) >= TELEMETRIA_INTERVALO_MS;
-        if (wsConectado && (enviarJa || porTempo)) {
+        const bool estadoTerminal = telemetria::estadoTerminal(snap.estado);
+
+        if (estadoTerminal && estadoTerminalEnviado) {
+            vTaskDelay(pdMS_TO_TICKS(5));
+            continue;
+        }
+
+        if (wsConectado && (enviarJa || (porTempo && !estadoTerminal))) {
             enviarTelemetria();
             ultimoEnvio = agora;
             enviarJa = false;
+
+            if (estadoTerminal) {
+                estadoTerminalEnviado = true;
+            }
         }
 
         vTaskDelay(pdMS_TO_TICKS(5));   // cede a CPU (nunca segura o Core 0)
@@ -105,6 +117,7 @@ void telemetriaInit() {
     memset(&snap, 0, sizeof(snap));
     snap.estado     = "INICIANDO";
     snap.bateriaPct = energiaLerPct();
+    estadoTerminalEnviado = false;
 
     // Fixa a task no Core 0 (o loop()/navegação fica no Core 1).
     xTaskCreatePinnedToCore(
@@ -139,6 +152,12 @@ void telemetriaAtualizar(uint32_t tempoCorridaMs,
         xSemaphoreGive(mutexSnapshot);
     }
 
-    // Estado terminal força envio imediato (não espera o tick de 5 Hz).
-    if (telemetria::estadoTerminal(estado)) enviarJa = true;
+    if (telemetria::estadoTerminal(estado)) {
+        estadoTerminalEnviado = false;
+    }
+
+        // Cada atualização da navegação deve aparecer no backend/UI sem esperar o
+        // tick de 5 Hz; o tick continua útil só como fallback quando não há novas
+        // amostras por um tempo.
+        enviarJa = true;
 }
