@@ -18,6 +18,8 @@ export function Minimapa({ tamanho, telemetries }: MinimapaProps) {
   const posicaoAtual =
     telemetries.length > 0 ? telemetries[telemetries.length - 1] : null;
 
+  const normalizarY = (y: number) => tamanho - 1 - y;
+
   // Pré-computa as células visitadas uma vez por atualização (Set de "x,y").
   // Antes, cada célula do grid varria toda a lista de telemetrias (.some),
   // dando O(células × telemetrias) por render. Com o Set, a checagem é O(1),
@@ -25,16 +27,20 @@ export function Minimapa({ tamanho, telemetries }: MinimapaProps) {
   const visitadas = useMemo(() => {
     const conjunto = new Set<string>();
     for (const t of telemetries) {
-      conjunto.add(`${t.posicaoX},${t.posicaoY}`);
+      conjunto.add(`${t.posicaoX},${normalizarY(t.posicaoY)}`);
     }
     return conjunto;
-  }, [telemetries]);
+  }, [telemetries, tamanho]);
 
   function classificarCelula(x: number, y: number) {
+    const yAtualNormalizado = posicaoAtual
+      ? normalizarY(posicaoAtual.posicaoY)
+      : null;
+
     if (
       posicaoAtual &&
       posicaoAtual.posicaoX === x &&
-      posicaoAtual.posicaoY === y
+      yAtualNormalizado === y
     ) {
       return "atual";
     }

@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { backendHttp } from "@/lib/backend";
 import {
   Table,
   TableBody,
@@ -40,7 +41,7 @@ export function CorridasTable() {
   const [corridaParaApagar, setCorridaParaApagar] = useState<Corrida | null>(null);
 
   // URL base da sua API Express
-  const API_URL = "http://localhost:3000/api/telemetria/runs";
+  const API_URL = `${backendHttp()}/api/telemetria/runs`;
 
   // 2. Função para buscar as corridas da API Express
   async function buscarCorridas() {

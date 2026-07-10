@@ -18,6 +18,7 @@ jest.mock("../../services/telemetry.service", () => ({
     getRunById: jest.fn(),
     getRuns: jest.fn(),
     getTelemetriesByRunId: jest.fn(),
+    finalizeRun: jest.fn(),
   },
 }));
 
@@ -244,6 +245,51 @@ describe("DELETE /api/telemetria/runs/:id", () => {
 
     expect(res.status).toBe(404);
     expect(TelemetryService.deleteRun).not.toHaveBeenCalled();
+  });
+});
+
+// ============================================================
+describe("PATCH /api/telemetria/runs/:id/finalizar", () => {
+  it("deve finalizar a corrida existente e retornar 200 com a corrida atualizada", async () => {
+    (TelemetryService.getRunById as jest.Mock)
+      .mockResolvedValueOnce(corridaAtiva)
+      .mockResolvedValueOnce({ ...corridaAtiva, status: "NAO_CONCLUIDA" });
+    (TelemetryService.finalizeRun as jest.Mock).mockResolvedValue({ count: 1 });
+
+    const res = await request(app).patch(
+      "/api/telemetria/runs/corrida-1/finalizar"
+    );
+
+    expect(res.status).toBe(200);
+    expect(TelemetryService.finalizeRun).toHaveBeenCalledWith(
+      "corrida-1",
+      "NAO_CONCLUIDA"
+    );
+    expect(res.body).toMatchObject({ status: "NAO_CONCLUIDA" });
+  });
+
+  it("deve retornar 404 ao tentar finalizar corrida inexistente", async () => {
+    (TelemetryService.getRunById as jest.Mock).mockResolvedValue(null);
+
+    const res = await request(app).patch(
+      "/api/telemetria/runs/xpto/finalizar"
+    );
+
+    expect(res.status).toBe(404);
+    expect(TelemetryService.finalizeRun).not.toHaveBeenCalled();
+  });
+
+  it("deve retornar 500 quando o serviço falha", async () => {
+    (TelemetryService.getRunById as jest.Mock).mockResolvedValue(corridaAtiva);
+    (TelemetryService.finalizeRun as jest.Mock).mockRejectedValue(
+      new Error("DB offline")
+    );
+
+    const res = await request(app).patch(
+      "/api/telemetria/runs/corrida-1/finalizar"
+    );
+
+    expect(res.status).toBe(500);
   });
 });
 

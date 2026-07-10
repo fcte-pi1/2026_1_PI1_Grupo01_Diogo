@@ -10,11 +10,21 @@ datasource db {
 // Histórico das Corridas
 model Run {
   id          String      @id @default(uuid())
-  status      String      @default("EM_ANDAMENTO") 
+  status      String      @default("EM_ANDAMENTO")
   startedAt   DateTime    @default(now())
-  endedAt     DateTime? 
-  
-  telemetries Telemetry[] 
+  endedAt     DateTime?
+
+  // Métricas agregadas da corrida, calculadas na finalização (auto ou manual).
+  tempoConclusaoMs   Int?     @map("tempo_conclusao_ms")
+  velocidadeMedia    Float?   @map("velocidade_media")
+  consumoBateriaPct  Int?     @map("consumo_bateria_pct")
+  desafioCumprido    Boolean? @map("desafio_cumprido")
+  trajetoCoordenadas String?  @map("trajeto_coordenadas")
+
+  // Dimensão do labirinto (N x N) informada pelo firmware na telemetria.
+  tamanhoLabirinto   Int?     @map("tamanho_labirinto")
+
+  telemetries Telemetry[]
 
   @@map("runs")
 }

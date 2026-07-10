@@ -372,6 +372,56 @@ describe("TelemetryController.deleteRun()", () => {
 });
 
 // ============================================================
+// Encerramento manual da corrida (botão "Parar" no frontend)
+// ============================================================
+
+const mockFinalizeRun = TelemetryService.finalizeRun as jest.Mock;
+
+describe("TelemetryController.finalizarRun()", () => {
+  it("deve finalizar a corrida existente e retornar 200 com a corrida atualizada", async () => {
+    mockGetRunById
+      .mockResolvedValueOnce(corridaAtiva)
+      .mockResolvedValueOnce({ ...corridaAtiva, status: "NAO_CONCLUIDA" });
+    mockFinalizeRun.mockResolvedValue({ count: 1 });
+
+    const req = criarReqComParams({ id: "corrida-1" });
+    const res = criarResComSend();
+
+    await TelemetryController.finalizarRun(req as Request, res as Response);
+
+    expect(mockFinalizeRun).toHaveBeenCalledWith("corrida-1", "NAO_CONCLUIDA");
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(res.json).toHaveBeenCalledWith(
+      expect.objectContaining({ status: "NAO_CONCLUIDA" })
+    );
+  });
+
+  it("deve retornar 404 quando a corrida não existe", async () => {
+    mockGetRunById.mockResolvedValue(null);
+
+    const req = criarReqComParams({ id: "inexistente" });
+    const res = criarResComSend();
+
+    await TelemetryController.finalizarRun(req as Request, res as Response);
+
+    expect(res.status).toHaveBeenCalledWith(404);
+    expect(mockFinalizeRun).not.toHaveBeenCalled();
+  });
+
+  it("deve retornar 500 quando o serviço falha", async () => {
+    mockGetRunById.mockResolvedValue(corridaAtiva);
+    mockFinalizeRun.mockRejectedValue(new Error("DB offline"));
+
+    const req = criarReqComParams({ id: "corrida-1" });
+    const res = criarResComSend();
+
+    await TelemetryController.finalizarRun(req as Request, res as Response);
+
+    expect(res.status).toHaveBeenCalledWith(500);
+  });
+});
+
+// ============================================================
 describe("TelemetryController.getRunById()", () => {
   // ----------------------------------------------------------
   it("deve retornar 200 com a corrida quando ela existe", async () => {

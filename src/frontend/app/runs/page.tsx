@@ -1,7 +1,5 @@
 "use client";
 
-import { useState } from "react";
-
 import { TelemetriaPanel } from "@/components/runs/telemetria-panel";
 import { ControlesPanel } from "@/components/runs/control-panel";
 import { SelecaoLabirinto } from "@/components/runs/control-sizeMaze";
@@ -16,10 +14,9 @@ export default function RunsPage() {
     telemetries,
     corridaEmAndamento,
     setCorridaEmAndamento,
+    mazeSize,
+    setMazeSize,
   } = useCorridaContext();
-
-  const [tamanhoLabirinto, setTamanhoLabirinto] =
-    useState<4 | 8 | 16>(16);
 
   const robotAtivo =
     telemetria?.estadoRobo === "EXPLORANDO" ||
@@ -29,22 +26,17 @@ export default function RunsPage() {
     <div className="grid grid-cols-2 gap-8">
       <div className="flex flex-col gap-4">
         <SelecaoLabirinto
-          tamanho={tamanhoLabirinto}
-          onChange={setTamanhoLabirinto}
+          tamanho={mazeSize}
+          onChange={setMazeSize}
           desabilitado={robotAtivo}
         />
 
-        <Minimapa
-          tamanho={tamanhoLabirinto}
-          telemetries={telemetries}
-        />
+        <Minimapa tamanho={mazeSize} telemetries={telemetries} />
       </div>
 
       <div className="flex flex-col gap-6">
         {telemetria ? (
-          <TelemetriaPanel
-            telemetria={telemetria}
-          />
+          <TelemetriaPanel telemetria={telemetria} />
         ) : (
           <div className="border rounded-lg p-6 text-muted-foreground">
             Nenhuma telemetria recebida.
